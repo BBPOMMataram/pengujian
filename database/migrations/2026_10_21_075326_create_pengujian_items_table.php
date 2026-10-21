@@ -16,8 +16,6 @@ return new class extends Migration
             $table->string('batch_id')->index();
             $table->string('filename')->nullable();
             $table->integer('row_number')->default(1);
-            $table->string('code')->nullable();
-            $table->string('name')->nullable();
             $table->string('qr_token', 64)->unique();
             $table->text('qr_content')->nullable();
             $table->json('data');

@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Pengujian - {{ $item->code }}</title>
+    <title>Laporan Pengujian - {{ $item->display_title }}</title>
     <style>
         @page {
             margin: 20mm 15mm 20mm 15mm;
@@ -220,17 +220,11 @@
         <table class="verification-table">
             <tr>
                 <td style="vertical-align: middle;">
-                    <div style="margin-bottom: 4px;">
-                        <span class="badge-verified">&#10003; TERVERIFIKASI RESMI</span>
-                    </div>
                     <div style="font-size: 10.5pt; font-weight: bold; color: #03428e;">
-                        {{ $item->name ?? 'Sampel Pengujian' }}
+                        {{ $item->display_title ?? 'Sampel Pengujian' }}
                     </div>
                     <div style="font-size: 8.5pt; color: #475569; margin-top: 2px;">
-                        Kode Sampel: <strong>{{ $item->code ?? '-' }}</strong> &bull; Baris Excel: #{{ $item->row_number }}
-                    </div>
-                    <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">
-                        Token Verifikasi: <code style="font-family: monospace;">{{ $item->qr_token }}</code>
+                        Identifikasi: <strong>{{ $item->display_code ?? '-' }}</strong> &bull; Baris: #{{ $item->row_number }}
                     </div>
                     <div style="font-size: 8pt; color: #047857; margin-top: 3px; word-break: break-all;">
                         <strong>Isi QR Code:</strong> {{ $item->qr_content ?: ($item->code ?: '-') }}
@@ -279,14 +273,6 @@
         </tbody>
     </table>
 
-    <!-- CATATAN LABORATORIUM -->
-    <div class="notes-box">
-        <strong>Catatan Laboratorium:</strong><br/>
-        1. Hasil pengujian di atas hanya berlaku untuk sampel yang diterima dan diuji di laboratorium BBPOM di Mataram.<br/>
-        2. Dokumen ini adalah dokumen resmi yang diterbitkan secara elektronik melalui Sistem Verifikasi QR Code Laboratorium.<br/>
-        3. Keabsahan dokumen ini dapat diverifikasi kapan saja dengan memindai QR Code yang tertera di dokumen ini.
-    </div>
-
     <!-- TANDA TANGAN DIGITAL -->
     <table class="sign-table">
         <tr>
@@ -301,15 +287,11 @@
                 Mataram, {{ now()->translatedFormat('d F Y') }}<br/>
                 <strong>Analis Penguji</strong>
                 <div style="height: 60px;"></div>
-                <strong>{{ $item->data['nama_analis'] ?? $item->data['analis'] ?? $item->data['penguji'] ?? 'Apt. Lalu Naofal Arkan, S.Farm.' }}</strong><br/>
+                <strong>{{ $item->data['nama_analis'] ?? $item->data['analis'] ?? $item->data['penguji'] ?? 'Lalu Naofal Arkan, S.T.' }}</strong><br/>
                 <span style="color: #64748b; font-size: 8pt;">Petugas Laboratorium Pengujian</span>
             </td>
         </tr>
     </table>
-
-    <div class="footer-note">
-        Dicetak otomatis oleh Sistem Informasi Laboratorium BBPOM di Mataram pada {{ now()->translatedFormat('d F Y H:i:s') }} WITA &bull; Halaman 1 / 1
-    </div>
 
 </body>
 </html>

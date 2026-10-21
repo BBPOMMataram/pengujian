@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Pengujian Laboratorium BBPOM - Upload Excel & Generator QR Code PDF</title>
+    <title>Laboratorium Pengujian BBPOM - Upload Excel & Generator QR Code PDF</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -89,8 +89,8 @@
                 <!-- Quick Load Sample Multi-Kolom -->
                 <form action="{{ route('pengujian.sample.full') }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors shadow-2xs" title="Muat contoh data laboratorium multi-kolom">
-                        <span class="material-symbols-outlined text-[17px]">dataset</span>
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-2xs" title="Muat data contoh laboratorium lengkap">
+                        <span class="material-symbols-outlined text-[17px]">lab_research</span>
                         <span>Contoh Lengkap</span>
                     </button>
                 </form>
@@ -100,53 +100,49 @@
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-rose-600 hover:bg-rose-50 transition-colors" title="Kosongkan Semua Data">
                             <span class="material-symbols-outlined text-[17px]">delete_sweep</span>
-                            <span class="hidden lg:inline">Reset</span>
+                            <span class="hidden md:inline">Reset</span>
                         </button>
                     </form>
+                    <span class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full font-medium ml-1">
+                        Total <strong>{{ number_format($totalOverall, 0, ',', '.') }}</strong> Data
+                    </span>
                 @endif
             </div>
         </div>
     </header>
 
     <!-- MAIN CONTENT -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
 
-        <!-- NOTIFICATION ALERTS -->
+        <!-- FLASH NOTIFICATIONS -->
         @if(session('success'))
-            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-start gap-3 shadow-xs animate-in fade-in">
-                <span class="material-symbols-outlined text-emerald-600 text-2xl shrink-0">check_circle</span>
-                <div class="flex-1 text-sm text-emerald-800 font-medium">
-                    {{ session('success') }}
-                </div>
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3 shadow-2xs">
+                <span class="material-symbols-outlined text-emerald-600 mt-0.5 shrink-0">check_circle</span>
+                <div class="flex-1 font-medium">{{ session('success') }}</div>
             </div>
         @endif
 
         @if(session('error'))
-            <div class="rounded-xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 shadow-xs animate-in fade-in">
-                <span class="material-symbols-outlined text-rose-600 text-2xl shrink-0">error</span>
-                <div class="flex-1 text-sm text-rose-800 font-medium">
-                    {{ session('error') }}
-                </div>
+            <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3 shadow-2xs">
+                <span class="material-symbols-outlined text-rose-600 mt-0.5 shrink-0">error</span>
+                <div class="flex-1 font-medium">{{ session('error') }}</div>
             </div>
         @endif
 
         @if($errors->any())
-            <div class="rounded-xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 shadow-xs">
-                <span class="material-symbols-outlined text-rose-600 text-2xl shrink-0">warning</span>
-                <div class="flex-1 text-sm text-rose-800">
-                    <ul class="list-disc list-inside space-y-1">
-                        @foreach($errors->all() as $err)
-                            <li>{{ $err }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+            <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm shadow-2xs">
+                <ul class="list-disc list-inside space-y-1">
+                    @foreach($errors->all() as $err)
+                        <li>{{ $err }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
-        <!-- SECTION 1: UPLOAD EXCEL CARD -->
+        <!-- SECTION 1: UPLOAD EXCEL CARD (1 Kolom Data & 1 Kolom Kosong) -->
         <section class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div class="p-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            <div class="p-6 sm:p-7">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                             <span class="material-symbols-outlined text-[#005baa]">upload_file</span>
@@ -176,7 +172,7 @@
                                 Klik untuk memilih file Excel atau seret &amp; letakkan ke sini
                             </p>
                             <p class="text-xs text-slate-400">
-                                Contoh: Kolom A berisi Data/Nama Sampel, Kolom B kosong (QR Code akan ter-generate otomatis)
+                                Format: Kolom A berisi Data/Nama Sampel, Kolom B kosong (QR Code akan ter-generate otomatis)
                             </p>
                         </div>
 
@@ -220,16 +216,26 @@
                 <div class="flex items-center gap-2 flex-wrap">
                     @if($selectedBatchId && $items->isNotEmpty())
                         <a href="{{ route('pengujian.batch.pdf', $selectedBatchId) }}" 
-                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs">
+                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs"
+                           title="Unduh seluruh data baris dalam batch ini ke satu dokumen PDF">
                             <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
                             <span>Export Batch ke PDF</span>
                         </a>
+
+                        <form action="{{ route('pengujian.batch.destroy', $selectedBatchId) }}" method="POST" onsubmit="return confirm('Hapus file / batch ini?')" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition" title="Hapus Batch Ini">
+                                <span class="material-symbols-outlined text-[15px]">delete</span>
+                                <span>Hapus Batch</span>
+                            </button>
+                        </form>
                     @endif
 
                     <form action="{{ route('pengujian.index') }}" method="GET" class="flex items-center gap-2">
                         <input type="hidden" name="batch" value="{{ $selectedBatchId }}">
                         <div class="relative">
-                            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari data/kode/informasi..." 
+                            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari data/informasi..." 
                                    class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] w-48 sm:w-60">
                             <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
                         </div>
@@ -254,7 +260,7 @@
                     </h3>
                     @if($currentBatch)
                         <p class="text-xs text-slate-500 mt-0.5">
-                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong> &bull; Diunggah pada {{ $currentBatch->created_at->format('d/m/Y H:i') }} WITA
+                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong> &bull; Diunggah pada {{ \Carbon\Carbon::parse($currentBatch->created_at)->format('d/m/Y H:i') }} WITA
                         </p>
                     @endif
                 </div>
@@ -356,7 +362,7 @@
                                             <button type="button" 
                                                     class="p-1 bg-white rounded-xl border border-slate-200 hover:border-[#005baa] hover:shadow-md transition-all group/qr shrink-0" 
                                                     title="Klik untuk melihat Pop-up QR Code"
-                                                    onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code ?: 'Sampel #' . $item->row_number) }}', '{{ addslashes($item->name ?: '-') }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                    onclick="openQrModal('{{ $item->qr_token }}', '{{ addslashes($item->display_title) }}', '{{ addslashes($item->code) }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
                                                 <div class="w-14 h-14 flex items-center justify-center p-0.5">
                                                     {!! $item->qr_svg_small !!}
                                                 </div>
@@ -371,7 +377,7 @@
                                             <button type="button"
                                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-2xs transition-colors"
                                                     title="Buka pop-up QR Code besar"
-                                                    onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code ?: 'Sampel #' . $item->row_number) }}', '{{ addslashes($item->name ?: '-') }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                    onclick="openQrModal('{{ $item->qr_token }}', '{{ addslashes($item->display_title) }}', '{{ addslashes($item->code) }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
                                                 <span class="material-symbols-outlined text-[15px]">qr_code_2</span>
                                                 <span>Pop-up QR</span>
                                             </button>
@@ -431,7 +437,7 @@
                     <span id="modal-sample-code" class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-[#005baa] tracking-wide font-mono">
                         SMP-0001
                     </span>
-                    <h4 id="modal-sample-name" class="text-base font-bold text-slate-900 mt-1.5 leading-snug">
+                    <h4 id="modal-sample-title" class="text-base font-bold text-slate-900 mt-1.5 leading-snug">
                         Nama Sampel Pengujian
                     </h4>
                 </div>
@@ -439,7 +445,7 @@
                 <!-- Big QR Code Container (Local High-Res SVG) -->
                 <div class="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200 inline-block shadow-inner">
                     <div id="modal-qr-container" class="w-60 h-60 mx-auto flex items-center justify-center bg-white p-2 rounded-xl shadow-xs">
-                        <!-- Injected via JS using server-side SVG Base64 -->
+                        <img id="modal-qr-img" src="" alt="QR Code" class="w-full h-full object-contain" />
                     </div>
                 </div>
 
@@ -476,7 +482,7 @@
 
             <!-- Modal Footer -->
             <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span class="text-[11px]">Dapat dipindai langsung menggunakan kamera HP</span>
+                <span class="text-[11px]">Dapat dipindai langsung menggunakan kamera smartphone</span>
                 <button type="button" onclick="closeQrModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition">
                     Tutup
                 </button>
@@ -550,32 +556,29 @@
         const modal = document.getElementById('qr-modal');
         let currentRawQrContent = '';
 
-        function openQrModal(id, code, name, qrContent, scanUrl, pdfUrl, fpdfUrl, qrBase64) {
+        function openQrModal(qrToken, title, code, qrContent, scanUrl, pdfUrl, fpdfUrl, qrBase64) {
             currentRawQrContent = qrContent || code;
             document.getElementById('modal-sample-code').innerText = code;
-            document.getElementById('modal-sample-name').innerText = name;
+            document.getElementById('modal-sample-title').innerText = title;
             document.getElementById('modal-qr-content').innerText = currentRawQrContent;
             document.getElementById('modal-btn-pdf').href = pdfUrl;
 
-            // Render high-res SVG directly from server base64
-            const qrContainer = document.getElementById('modal-qr-container');
-            const svgDataUri = 'data:image/svg+xml;base64,' + qrBase64;
-            qrContainer.innerHTML = `
-                <img src="${svgDataUri}" 
-                     alt="QR Code ${code}" 
-                     class="w-full h-full object-contain" />
-            `;
+            // Render high-res SVG directly from server base64 or fallback to /qr/ route
+            const qrImg = document.getElementById('modal-qr-img');
+            const svgDataUri = qrBase64 ? ('data:image/svg+xml;base64,' + qrBase64) : ('/qr/' + qrToken);
+            qrImg.src = svgDataUri;
 
             // Setup download link for SVG
             const downloadBtn = document.getElementById('modal-btn-download-svg');
             downloadBtn.href = svgDataUri;
-            downloadBtn.download = 'QR-' + code.replace(/[^a-z0-9]/gi, '_') + '.svg';
+            downloadBtn.download = 'QR-' + (code || 'code').replace(/[^a-z0-9]/gi, '_') + '.svg';
 
             modal.classList.remove('hidden');
         }
 
         function closeQrModal() {
             modal.classList.add('hidden');
+            document.getElementById('modal-qr-img').src = '';
         }
 
         function copyQrContent() {
@@ -589,18 +592,20 @@
             });
         }
 
-        // Close on ESC key or clicking backdrop
+        // Close on ESC key or clicking outside backdrop
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
                 closeQrModal();
             }
         });
 
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeQrModal();
-            }
-        });
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeQrModal();
+                }
+            });
+        }
     </script>
 </body>
 </html>

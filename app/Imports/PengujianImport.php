@@ -28,7 +28,7 @@ class PengujianImport implements ToCollection
         $cleanedRows = [];
         foreach ($rows as $r) {
             $rowArray = is_array($r) ? $r : $r->toArray();
-            // Check if entire row is empty
+            // Filter out empty rows
             $nonEmpty = array_filter($rowArray, fn($v) => !is_null($v) && trim((string)$v) !== '');
             if (!empty($nonEmpty)) {
                 $cleanedRows[] = array_values($rowArray);
@@ -57,7 +57,7 @@ class PengujianImport implements ToCollection
             }
             $dataRows = array_slice($cleanedRows, 1);
         } else {
-            // Generate friendly column names
+            // Generate friendly column names for 2-column or multi-column data
             $maxCols = max(array_map('count', $cleanedRows));
             for ($i = 0; $i < $maxCols; $i++) {
                 if ($i === 0) {
@@ -71,12 +71,13 @@ class PengujianImport implements ToCollection
             $dataRows = $cleanedRows;
         }
 
+        $now = now();
+        $records = [];
         $rowNum = 1;
+
         foreach ($dataRows as $row) {
             $mappedData = [];
             $dataColumnValue = null;
-            $code = null;
-            $name = null;
 
             foreach ($headers as $colIdx => $headerName) {
                 $val = isset($row[$colIdx]) ? trim((string)$row[$colIdx]) : '';
@@ -93,38 +94,27 @@ class PengujianImport implements ToCollection
                 if ($dataColumnValue === null && $val !== '') {
                     $dataColumnValue = $val;
                 }
-
-                // Check for explicit code or name
-                $hLower = strtolower($headerName);
-                if (!$code && (str_contains($hLower, 'kode') || str_contains($hLower, 'code') || str_contains($hLower, 'no') || str_contains($hLower, 'id'))) {
-                    $code = $val;
-                }
-                if (!$name && (str_contains($hLower, 'nama') || str_contains($hLower, 'sampel') || str_contains($hLower, 'produk') || str_contains($hLower, 'sample'))) {
-                    $name = $val;
-                }
-            }
-
-            // Fallback for code and name
-            if (!$code) {
-                $code = $dataColumnValue ?: ('SMP-' . str_pad((string)$rowNum, 4, '0', STR_PAD_LEFT));
-            }
-            if (!$name) {
-                $name = $dataColumnValue ?: 'Sampel #' . $rowNum;
             }
 
             // The QR code contains the information from the adjacent column
-            $qrContent = $dataColumnValue ?: $code;
+            $qrContent = $dataColumnValue ?: ('SMP-' . str_pad((string)$rowNum, 4, '0', STR_PAD_LEFT));
 
-            PengujianItem::create([
+            $records[] = [
                 'batch_id' => $this->batchId,
                 'filename' => $this->filename,
                 'row_number' => $rowNum++,
-                'code' => $code,
-                'name' => $name,
                 'qr_token' => Str::random(32),
                 'qr_content' => $qrContent,
-                'data' => $mappedData,
-            ]);
+                'data' => json_encode($mappedData),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (!empty($records)) {
+            foreach (array_chunk($records, 200) as $chunk) {
+                PengujianItem::insert($chunk);
+            }
         }
     }
 

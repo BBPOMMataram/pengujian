@@ -19,6 +19,7 @@ Route::post('/load-sample-full', [PengujianController::class, 'loadSampleData'])
 
 // Public Scan Endpoint
 Route::get('/scan/{qrToken}', [PengujianController::class, 'scan'])->name('pengujian.scan');
+Route::get('/qr/{qrToken}', [PengujianController::class, 'qrImage'])->name('pengujian.qr');
 
 // PDF Generation Routes (Per-Row & Batch)
 Route::get('/item/{id}/pdf', [PengujianController::class, 'pdf'])->name('pengujian.pdf');
@@ -27,4 +28,5 @@ Route::get('/batch/{batchId}/pdf-all', [PengujianController::class, 'pdfBatch'])
 
 // Data Cleanup
 Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy');
+Route::post('/batch/{batchId}/delete', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy.post');
 Route::post('/clear-all', [PengujianController::class, 'clearAll'])->name('pengujian.clear');

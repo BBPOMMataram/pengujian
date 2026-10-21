@@ -20,11 +20,11 @@ class PengujianController extends Controller
      */
     public function index(Request $request)
     {
-        // Get list of distinct batches
-        $batches = PengujianItem::select('batch_id', 'filename', 'created_at')
-            ->selectRaw('count(*) as total_items')
-            ->groupBy('batch_id', 'filename', 'created_at')
-            ->orderBy('created_at', 'desc')
+        // Get list of distinct batches grouped strictly by batch_id and filename
+        $batches = PengujianItem::select('batch_id', 'filename')
+            ->selectRaw('MIN(created_at) as created_at, count(*) as total_items')
+            ->groupBy('batch_id', 'filename')
+            ->orderByDesc('created_at')
             ->get();
 
         $selectedBatchId = $request->query('batch');
@@ -40,9 +40,7 @@ class PengujianController extends Controller
 
         if ($search = $request->query('q')) {
             $itemsQuery->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('qr_content', 'like', "%{$search}%")
+                $q->where('qr_content', 'like', "%{$search}%")
                   ->orWhere('data', 'like', "%{$search}%");
             });
         }
@@ -101,18 +99,28 @@ class PengujianController extends Controller
         ]);
 
         $file = $request->file('excel_file');
-        $originalName = $file->getClientOriginalName();
-        $batchId = 'BATCH-' . date('Ymd-His') . '-' . Str::upper(Str::random(4));
+        $originalFilename = $file->getClientOriginalName();
+        $batchId = 'BATCH-' . date('Ymd-His') . '-' . Str::random(4);
 
         try {
-            Excel::import(new PengujianImport($batchId, $originalName), $file);
+            Excel::import(new PengujianImport($batchId, $originalFilename), $file);
+
             $count = PengujianItem::where('batch_id', $batchId)->count();
 
             return redirect()->route('pengujian.index', ['batch' => $batchId])
-                ->with('success', "Berhasil mengunggah file \"{$originalName}\"! {$count} baris data berhasil dipetakan dengan QR Code di kolom sampingnya.");
+                ->with('success', "File \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil dimuat & QR Code ter-generate otomatis.");
         } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Download the sample template (default 2-kolom).
+     */
+    public function downloadTemplate()
+    {
+        return $this->downloadTemplateTwoColumn();
     }
 
     /**
@@ -137,7 +145,6 @@ class PengujianController extends Controller
     public function loadSampleTwoColumn()
     {
         $export = new SampleTwoColumnExport();
-        $headings = $export->headings();
         $rows = $export->array();
 
         $batchId = 'SAMPLE-2COL-' . date('Ymd-His');
@@ -145,7 +152,7 @@ class PengujianController extends Controller
 
         $count = 0;
         foreach ($rows as $index => $rowValues) {
-            $dataVal = $rowValues[0] ?? "Sampel #" . ($index + 1);
+            $dataVal = $rowValues[0] ?? ("Sampel #" . ($index + 1));
 
             $data = [
                 'Data Informasi' => $dataVal,
@@ -156,8 +163,6 @@ class PengujianController extends Controller
                 'batch_id' => $batchId,
                 'filename' => $filename,
                 'row_number' => $index + 1,
-                'code' => 'SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
-                'name' => $dataVal,
                 'qr_token' => Str::random(32),
                 'qr_content' => $dataVal,
                 'data' => $data,
@@ -178,35 +183,32 @@ class PengujianController extends Controller
         $headings = $export->headings();
         $rows = $export->array();
 
-        $batchId = 'SAMPLE-FULL-' . date('Ymd-His');
-        $filename = 'Contoh_Lengkap_Pengujian_Laboratorium.xlsx';
+        $batchId = 'SAMPLE-' . date('Ymd-His');
+        $filename = 'Contoh_Data_Pengujian_Laboratorium.xlsx';
 
         $count = 0;
         foreach ($rows as $index => $rowValues) {
             $data = [];
             foreach ($headings as $i => $h) {
-                $data[$h] = $rowValues[$i] ?? null;
+                $slug = Str::slug($h, '_');
+                $data[$slug] = $rowValues[$i] ?? null;
             }
 
-            $code = $data['Kode Sampel'] ?? ('SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT));
-            $name = $data['Nama Sampel'] ?? 'Sampel Pengujian';
-            $qrContent = "{$code} | {$name} | Hasil: " . ($data['Kesimpulan'] ?? 'MS');
+            $primaryVal = $data['kode_sampel'] ?? ($data['nama_sampel'] ?? ('SMP-' . str_pad((string)($index + 1), 4, '0', STR_PAD_LEFT)));
 
             PengujianItem::create([
                 'batch_id' => $batchId,
                 'filename' => $filename,
                 'row_number' => $index + 1,
-                'code' => $code,
-                'name' => $name,
                 'qr_token' => Str::random(32),
-                'qr_content' => $qrContent,
+                'qr_content' => $primaryVal . ' - ' . ($data['nama_sampel'] ?? ''),
                 'data' => $data,
             ]);
             $count++;
         }
 
         return redirect()->route('pengujian.index', ['batch' => $batchId])
-            ->with('success', "Berhasil memuat {$count} data sampel contoh multi-kolom laboratorium BPOM dengan QR Code!");
+            ->with('success', "Berhasil memuat {$count} data sampel contoh laboratorium BPOM dengan QR Code!");
     }
 
     /**
@@ -220,66 +222,49 @@ class PengujianController extends Controller
     }
 
     /**
-     * Generate PDF using barryvdh/laravel-dompdf for single row.
+     * Render SVG QR code directly on demand for modal popup or external image tag.
      */
-    public function pdf(int $id, Request $request)
+    public function qrImage(string $qrToken)
+    {
+        $item = PengujianItem::where('qr_token', $qrToken)->firstOrFail();
+        $contentToEncode = $item->qr_content ?: route('pengujian.scan', $item->qr_token);
+        $svg = (string) QrCode::size(250)->margin(2)->generate($contentToEncode);
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
+    /**
+     * Generate PDF using DomPDF per row.
+     */
+    public function pdf(int $id)
     {
         $item = PengujianItem::findOrFail($id);
-        $action = $request->query('download') ? 'attachment' : 'inline';
 
-        return $this->generateDomPdf($item, $action);
+        return $this->generateDomPdf($item, 'inline');
     }
 
     /**
-     * Batch export: export all items in a batch to a combined PDF.
-     */
-    public function pdfBatch(string $batchId, Request $request)
-    {
-        $items = PengujianItem::where('batch_id', $batchId)->orderBy('row_number', 'asc')->get();
-        if ($items->isEmpty()) {
-            return redirect()->route('pengujian.index')->with('error', 'Batch data tidak ditemukan.');
-        }
-
-        foreach ($items as $item) {
-            $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
-            $qrSvg = (string) QrCode::size(120)->margin(1)->generate($contentToEncode);
-            $item->qr_base64 = base64_encode($qrSvg);
-        }
-
-        $pdf = Pdf::loadView('pdf.batch-pengujian', [
-            'items' => $items,
-            'batchId' => $batchId,
-            'filename' => $items->first()->filename ?? 'Batch_Pengujian',
-        ]);
-
-        $pdf->setPaper('A4', 'portrait');
-
-        $downloadFilename = 'LHP-Batch-' . Str::slug($batchId) . '.pdf';
-        return $pdf->download($downloadFilename);
-    }
-
-    /**
-     * Helper to render DomPDF for a single row.
+     * Helper to render DomPDF view.
      */
     protected function generateDomPdf(PengujianItem $item, string $disposition = 'inline')
     {
-        $targetUrl = route('pengujian.scan', $item->qr_token);
+        $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
         
-        // The QR code contains the information from the adjacent column!
-        $contentToEncode = $item->qr_content ?: ($item->code ?: $targetUrl);
-        $qrSvg = (string) QrCode::size(120)->margin(1)->generate($contentToEncode);
+        $qrSvg = QrCode::size(140)->margin(1)->generate($contentToEncode);
         $qrBase64 = base64_encode($qrSvg);
 
         $pdf = Pdf::loadView('pdf.laporan-pengujian', [
             'item' => $item,
             'qrBase64' => $qrBase64,
-            'qrContent' => $contentToEncode,
-            'targetUrl' => $targetUrl,
+            'printedAt' => now()->format('d/m/Y H:i'),
         ]);
 
         $pdf->setPaper('A4', 'portrait');
 
-        $filename = 'LHP-' . Str::slug($item->code ?: 'sampel') . '.pdf';
+        $filename = 'LHP-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf';
 
         if ($disposition === 'attachment') {
             return $pdf->download($filename);
@@ -289,108 +274,135 @@ class PengujianController extends Controller
     }
 
     /**
-     * Generate PDF using FPDF plugin.
+     * Generate Batch PDF (all items in a batch) using DomPDF.
+     */
+    public function pdfBatch(string $batchId)
+    {
+        $items = PengujianItem::where('batch_id', $batchId)->orderBy('row_number', 'asc')->get();
+
+        if ($items->isEmpty()) {
+            return redirect()->back()->with('error', 'Batch data tidak ditemukan.');
+        }
+
+        foreach ($items as $item) {
+            $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
+            $qrSvg = QrCode::size(120)->margin(1)->generate($contentToEncode);
+            $item->qr_base64 = base64_encode($qrSvg);
+        }
+
+        $pdf = Pdf::loadView('pdf.batch-pengujian', [
+            'items' => $items,
+            'batchId' => $batchId,
+            'filename' => $items->first()->filename ?: 'Batch Pengujian',
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ]);
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream('LHP-Batch-' . Str::slug($batchId) . '.pdf');
+    }
+
+    /**
+     * Alternative PDF generation using FPDF library per row.
      */
     public function pdfFpdf(int $id)
     {
         $item = PengujianItem::findOrFail($id);
-        $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
 
         $fpdf = new FPDF('P', 'mm', 'A4');
         $fpdf->AddPage();
         $fpdf->SetAutoPageBreak(true, 15);
 
-        // Header BPOM
-        $fpdf->SetFont('Arial', 'B', 12);
-        $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(0, 6, 'BADAN PENGAWAS OBAT DAN MAKANAN', 0, 1, 'C');
+        // Header Balai
         $fpdf->SetFont('Arial', 'B', 13);
-        $fpdf->SetTextColor(15, 23, 42);
-        $fpdf->Cell(0, 6, 'BALAI BESAR POM DI MATARAM - LABORATORIUM PENGUJIAN', 0, 1, 'C');
-        $fpdf->SetFont('Arial', '', 8);
+        $fpdf->SetTextColor(3, 66, 142);
+        $fpdf->Cell(0, 7, 'BALAI BESAR PENGAWAS OBAT DAN MAKANAN DI MATARAM', 0, 1, 'C');
+        $fpdf->SetFont('Arial', '', 8.5);
         $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->Cell(0, 4, 'Jl. Cendrawasih No. 84, Cakranegara, Kota Mataram, NTB 83239 | Telp: (0370) 621926', 0, 1, 'C');
-        $fpdf->Ln(2);
-
-        // Double line
+        $fpdf->Cell(0, 5, 'Jl. Majapahit No. 147A, Mataram - Nusa Tenggara Barat | Telp: (0370) 621926', 0, 1, 'C');
         $fpdf->SetDrawColor(3, 66, 142);
-        $fpdf->SetLineWidth(0.8);
-        $fpdf->Line(15, $fpdf->GetY(), 195, $fpdf->GetY());
-        $fpdf->SetLineWidth(0.3);
-        $fpdf->Line(15, $fpdf->GetY() + 1.2, 195, $fpdf->GetY() + 1.2);
+        $fpdf->SetLineWidth(0.6);
+        $fpdf->Line(15, 27, 195, 27);
         $fpdf->Ln(7);
 
-        // Title
-        $fpdf->SetFont('Arial', 'B', 13);
+        // Document Title
+        $fpdf->SetFont('Arial', 'B', 11);
         $fpdf->SetTextColor(15, 23, 42);
         $fpdf->Cell(0, 7, 'LAPORAN HASIL PENGUJIAN SAMPEL (FPDF)', 0, 1, 'C');
         $fpdf->SetFont('Arial', '', 9);
         $fpdf->SetTextColor(71, 85, 105);
-        $fpdf->Cell(0, 5, 'Nomor Dokumen: LHP/FPDF/' . date('Y') . '/' . str_pad($item->id, 5, '0', STR_PAD_LEFT), 0, 1, 'C');
+        $fpdf->Cell(0, 5, 'Nomor Dokumen: LHP/FPDF/' . date('Y') . '/' . str_pad((string)$item->id, 5, '0', STR_PAD_LEFT), 0, 1, 'C');
         $fpdf->Ln(4);
 
         // Sample Info Box
-        $fpdf->SetFillColor(240, 247, 255);
-        $fpdf->SetDrawColor(191, 219, 254);
-        $fpdf->Rect(15, $fpdf->GetY(), 180, 26, 'DF');
+        $fpdf->SetFillColor(241, 245, 249);
+        $fpdf->SetDrawColor(203, 213, 225);
+        $fpdf->SetLineWidth(0.2);
+        $curY = $fpdf->GetY();
+        $fpdf->Rect(15, $curY, 180, 24, 'DF');
 
-        $curY = $fpdf->GetY() + 3;
-        $fpdf->SetXY(20, $curY);
-        $fpdf->SetFont('Arial', 'B', 11);
+        $fpdf->SetXY(20, $curY + 2);
+        $fpdf->SetFont('Arial', 'B', 10);
         $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(170, 6, $item->name ?: 'Sampel Pengujian', 0, 1);
+        $fpdf->Cell(120, 5, 'ID SAMPEL: #' . $item->id . ' (Baris ' . $item->row_number . ')', 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', '', 9);
-        $fpdf->SetTextColor(51, 65, 85);
-        $fpdf->Cell(170, 5, 'Kode Sampel: ' . ($item->code ?: '-') . '   |   Baris: #' . $item->row_number, 0, 1);
+        $fpdf->SetTextColor(15, 23, 42);
+        $fpdf->Cell(120, 5, 'Nama / Keterangan: ' . ($item->display_title ?? '-'), 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', 'I', 8);
         $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->Cell(170, 5, 'Isi QR Code: ' . substr($contentToEncode, 0, 80), 0, 1);
+        $fpdf->Cell(120, 5, 'Batch: ' . $item->batch_id . ' | File: ' . ($item->filename ?: '-'), 0, 1);
 
-        $fpdf->Ln(12);
-
-        // Column Mapping Table
-        $fpdf->SetFont('Arial', 'B', 10);
-        $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(0, 6, 'PEMETAAN DATA PER KOLOM EXCEL:', 0, 1);
-        $fpdf->Ln(1);
+        $fpdf->SetY($curY + 28);
 
         // Table Header
         $fpdf->SetFillColor(3, 66, 142);
         $fpdf->SetTextColor(255, 255, 255);
+        $fpdf->SetDrawColor(3, 66, 142);
         $fpdf->SetFont('Arial', 'B', 9);
         $fpdf->Cell(12, 7, 'No', 1, 0, 'C', true);
-        $fpdf->Cell(65, 7, 'Kolom Excel', 1, 0, 'L', true);
-        $fpdf->Cell(103, 7, 'Nilai Informasi', 1, 1, 'L', true);
+        $fpdf->Cell(65, 7, 'Parameter / Kolom', 1, 0, 'L', true);
+        $fpdf->Cell(103, 7, 'Nilai Informasi Hasil Pengujian', 1, 1, 'L', true);
 
         // Table Rows
-        $fpdf->SetTextColor(15, 23, 42);
         $fpdf->SetFont('Arial', '', 8.5);
+        $fpdf->SetTextColor(30, 41, 59);
+        $fpdf->SetDrawColor(203, 213, 225);
+
         $no = 1;
-        $fill = false;
         if (is_array($item->data)) {
-            foreach ($item->data as $k => $v) {
+            foreach ($item->data as $key => $val) {
+                $bg = ($no % 2 === 0);
                 $fpdf->SetFillColor(248, 250, 252);
-                $fpdf->Cell(12, 6, (string)$no++, 1, 0, 'C', $fill);
-                $fpdf->Cell(65, 6, substr(str_replace(['_', '-'], ' ', (string)$k), 0, 35), 1, 0, 'L', $fill);
-                
-                $vStr = is_array($v) ? json_encode($v) : (string)($v ?? '-');
-                $fpdf->Cell(103, 6, substr($vStr, 0, 60), 1, 1, 'L', $fill);
-                $fill = !$fill;
+                $fpdf->Cell(12, 6, (string)$no++, 1, 0, 'C', $bg);
+                $fpdf->Cell(65, 6, substr(ucwords(str_replace(['_', '-'], ' ', (string)$key)), 0, 35), 1, 0, 'L', $bg);
+                $valStr = is_array($val) ? json_encode($val) : (string)($val ?? '-');
+                $fpdf->Cell(103, 6, substr($valStr, 0, 65), 1, 1, 'L', $bg);
             }
         }
 
-        $fpdf->Ln(15);
-        $fpdf->SetFont('Arial', '', 8.5);
+        $fpdf->Ln(6);
+        $fpdf->SetFont('Arial', 'I', 8);
         $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->Cell(0, 5, 'Dicetak melalui Sistem Pengujian Laboratorium BBPOM di Mataram pada ' . date('d/m/Y H:i') . ' WITA', 0, 1, 'C');
+        $fpdf->MultiCell(0, 4, "Catatan: Dokumen laporan pengujian ini dibuat secara otomatis dengan sistem laboratorium BPOM (FPDF + Laravel). Pindai QR Code untuk memverifikasi keabsahan data.");
 
-        return response($fpdf->Output('S', 'LHP-FPDF-' . ($item->code ?: 'sampel') . '.pdf'))
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="LHP-FPDF-' . ($item->code ?: 'sampel') . '.pdf"');
+        $fpdf->Ln(8);
+        $fpdf->SetFont('Arial', '', 9);
+        $fpdf->SetTextColor(15, 23, 42);
+        $fpdf->Cell(90, 5, 'Mengetahui, Penyelia', 0, 0, 'C');
+        $fpdf->Cell(90, 5, 'Mataram, ' . date('d F Y'), 0, 1, 'C');
+        $fpdf->Ln(15);
+        $fpdf->SetFont('Arial', 'B', 9);
+        $fpdf->Cell(90, 5, 'Apt. I Made Sujana, S.Farm.', 0, 0, 'C');
+        $fpdf->Cell(90, 5, 'Apt. Lalu Naofal Arkan, S.Farm.', 0, 1, 'C');
+
+        return response($fpdf->Output('S', 'LHP-FPDF-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="LHP-FPDF-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf"',
+        ]);
     }
 
     /**
@@ -401,17 +413,18 @@ class PengujianController extends Controller
         $deleted = PengujianItem::where('batch_id', $batchId)->delete();
 
         return redirect()->route('pengujian.index')
-            ->with('success', "Batch \"{$batchId}\" ({$deleted} data) berhasil dihapus.");
+            ->with('success', "File / Batch data ({$deleted} baris) berhasil dihapus.");
     }
 
     /**
-     * Clear all data in database.
+     * Delete all records in the database.
      */
     public function clearAll()
     {
+        $count = PengujianItem::count();
         PengujianItem::truncate();
 
         return redirect()->route('pengujian.index')
-            ->with('success', 'Semua data pengujian laboratorium berhasil dikosongkan.');
+            ->with('success', "Seluruh data pengujian ({$count} data) berhasil dikosongkan.");
     }
 }
