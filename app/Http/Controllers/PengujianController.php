@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\SamplePengujianExport;
 use App\Imports\PengujianImport;
 use App\Models\PengujianItem;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -19,11 +18,11 @@ class PengujianController extends Controller
      */
     public function index(Request $request)
     {
-        // Get list of distinct batches
-        $batches = PengujianItem::select('batch_id', 'filename', 'created_at')
-            ->selectRaw('count(*) as total_items')
-            ->groupBy('batch_id', 'filename', 'created_at')
-            ->orderBy('created_at', 'desc')
+        // Get list of distinct batches grouped strictly by batch_id and filename
+        $batches = PengujianItem::select('batch_id', 'filename')
+            ->selectRaw('MIN(created_at) as created_at, count(*) as total_items')
+            ->groupBy('batch_id', 'filename')
+            ->orderByDesc('created_at')
             ->get();
 
         $selectedBatchId = $request->query('batch');
@@ -38,27 +37,15 @@ class PengujianController extends Controller
         }
 
         if ($search = $request->query('q')) {
-            $itemsQuery->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('data', 'like', "%{$search}%");
-            });
+            $itemsQuery->whereRaw("CAST(data AS CHAR) LIKE ?", ["%{$search}%"]);
         }
 
         $items = $itemsQuery->orderBy('row_number', 'asc')->get();
 
-        // Prepare QR codes and headers for each item
+        // Collect all distinct headers dynamically from this batch's data
         $headers = [];
         foreach ($items as $item) {
-            $targetUrl = route('pengujian.scan', $item->qr_token);
-            $item->target_url = $targetUrl;
-            
-            // Generate small SVG for table column
-            $item->qr_svg_small = (string) QrCode::size(70)->margin(1)->generate($targetUrl);
-            
-            // Generate large SVG for popup modal
-            $item->qr_svg_large = (string) QrCode::size(240)->margin(2)->generate($targetUrl);
-            $item->qr_base64 = base64_encode($item->qr_svg_large);
+            $item->target_url = route('pengujian.scan', $item->qr_token);
 
             if (is_array($item->data)) {
                 foreach (array_keys($item->data) as $h) {
@@ -82,7 +69,7 @@ class PengujianController extends Controller
     }
 
     /**
-     * Handle Excel upload using Maatwebsite\Excel.
+     * Handle Excel / CSV upload using Maatwebsite\Excel.
      */
     public function upload(Request $request)
     {
@@ -110,50 +97,6 @@ class PengujianController extends Controller
     }
 
     /**
-     * Download the official sample Excel template.
-     */
-    public function downloadTemplate()
-    {
-        return Excel::download(new SamplePengujianExport, 'Contoh_Data_Pengujian_Laboratorium.xlsx');
-    }
-
-    /**
-     * Quick-load sample data directly into the database.
-     */
-    public function loadSampleData()
-    {
-        $export = new SamplePengujianExport();
-        $headings = $export->headings();
-        $rows = $export->array();
-
-        $batchId = 'SAMPLE-' . date('Ymd-His');
-        $filename = 'Contoh_Data_Pengujian_Laboratorium.xlsx';
-
-        $count = 0;
-        foreach ($rows as $index => $rowValues) {
-            $data = [];
-            foreach ($headings as $i => $h) {
-                $slug = Str::slug($h, '_');
-                $data[$slug] = $rowValues[$i] ?? null;
-            }
-
-            PengujianItem::create([
-                'batch_id' => $batchId,
-                'filename' => $filename,
-                'row_number' => $index + 1,
-                'code' => $data['kode_sampel'] ?? ('SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT)),
-                'name' => $data['nama_sampel'] ?? 'Sampel Pengujian',
-                'qr_token' => Str::random(32),
-                'data' => $data,
-            ]);
-            $count++;
-        }
-
-        return redirect()->route('pengujian.index', ['batch' => $batchId])
-            ->with('success', "Berhasil memuat {$count} data sampel contoh laboratorium BPOM dengan QR Code!");
-    }
-
-    /**
      * Public QR Code scan target: outputs PDF directly to the scanner's phone or browser.
      */
     public function scan(string $qrToken)
@@ -161,6 +104,21 @@ class PengujianController extends Controller
         $item = PengujianItem::where('qr_token', $qrToken)->firstOrFail();
 
         return $this->generateDomPdf($item, 'inline');
+    }
+
+    /**
+     * Render SVG QR code directly on demand for modal popup.
+     */
+    public function qrImage(string $qrToken)
+    {
+        $item = PengujianItem::where('qr_token', $qrToken)->firstOrFail();
+        $targetUrl = route('pengujian.scan', $item->qr_token);
+        $svg = (string) QrCode::size(240)->margin(2)->generate($targetUrl);
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     /**
@@ -191,7 +149,7 @@ class PengujianController extends Controller
 
         $pdf->setPaper('A4', 'portrait');
 
-        $filename = 'LHP-' . Str::slug($item->code ?: 'sampel') . '.pdf';
+        $filename = 'LHP-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf';
 
         if ($disposition === 'attachment') {
             return $pdf->download($filename);
@@ -238,7 +196,7 @@ class PengujianController extends Controller
         $fpdf->Cell(0, 7, 'LAPORAN HASIL PENGUJIAN SAMPEL (FPDF)', 0, 1, 'C');
         $fpdf->SetFont('Arial', '', 9);
         $fpdf->SetTextColor(71, 85, 105);
-        $fpdf->Cell(0, 5, 'Nomor Dokumen: LHP/FPDF/' . date('Y') . '/' . str_pad($item->id, 5, '0', STR_PAD_LEFT), 0, 1, 'C');
+        $fpdf->Cell(0, 5, 'Nomor Dokumen: LHP/FPDF/' . date('Y') . '/' . str_pad((string)$item->id, 5, '0', STR_PAD_LEFT), 0, 1, 'C');
         $fpdf->Ln(4);
 
         // Sample Info Box
@@ -250,12 +208,12 @@ class PengujianController extends Controller
         $fpdf->SetXY(20, $curY);
         $fpdf->SetFont('Arial', 'B', 10);
         $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(120, 5, 'KODE SAMPEL: ' . ($item->code ?? '-'), 0, 1);
+        $fpdf->Cell(120, 5, 'ID SAMPEL: #' . $item->id . ' (Baris ' . $item->row_number . ')', 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', '', 9);
         $fpdf->SetTextColor(15, 23, 42);
-        $fpdf->Cell(120, 5, 'Nama Sampel: ' . ($item->name ?? '-'), 0, 1);
+        $fpdf->Cell(120, 5, 'Nama / Keterangan: ' . ($item->display_title ?? '-'), 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', 'I', 8);
@@ -300,7 +258,7 @@ class PengujianController extends Controller
         $fpdf->Ln(6);
         $fpdf->SetFont('Arial', 'I', 8);
         $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->MultiCell(0, 4, "Catatan: Dokumen laporan pengujian ini dibuat secara otomatis dengan plugin FPDF & Laravel. Pindai QR Code untuk memverifikasi keabsahan data.");
+        $fpdf->MultiCell(0, 4, "Catatan: Dokumen laporan pengujian ini dibuat secara otomatis dengan sistem laboratorium BPOM. Pindai QR Code untuk memverifikasi keabsahan data.");
 
         $fpdf->Ln(8);
         $fpdf->SetFont('Arial', '', 9);
@@ -312,9 +270,9 @@ class PengujianController extends Controller
         $fpdf->Cell(90, 5, 'Apt. I Made Sujana, S.Farm.', 0, 0, 'C');
         $fpdf->Cell(90, 5, 'Apt. Lalu Naofal Arkan, S.Farm.', 0, 1, 'C');
 
-        return response($fpdf->Output('S', 'LHP-FPDF-' . $item->code . '.pdf'), 200, [
+        return response($fpdf->Output('S', 'LHP-FPDF-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf'), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="LHP-FPDF-' . $item->code . '.pdf"',
+            'Content-Disposition' => 'inline; filename="LHP-FPDF-' . Str::slug($item->display_title ?: ('sampel-' . $item->id)) . '.pdf"',
         ]);
     }
 
@@ -326,7 +284,7 @@ class PengujianController extends Controller
         $deleted = PengujianItem::where('batch_id', $batchId)->delete();
 
         return redirect()->route('pengujian.index')
-            ->with('success', "Batch data ({$deleted} baris) berhasil dihapus.");
+            ->with('success', "File / Batch data ({$deleted} baris) berhasil dihapus.");
     }
 
     /**
