@@ -232,6 +232,9 @@
                     <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">
                         Token Verifikasi: <code style="font-family: monospace;">{{ $item->qr_token }}</code>
                     </div>
+                    <div style="font-size: 8pt; color: #047857; margin-top: 3px; word-break: break-all;">
+                        <strong>Isi QR Code:</strong> {{ $item->qr_content ?: ($item->code ?: '-') }}
+                    </div>
                 </td>
                 <td style="width: 110px; text-align: right; vertical-align: middle;">
                     @if(!empty($qrBase64))

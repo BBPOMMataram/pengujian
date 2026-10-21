@@ -17,6 +17,7 @@ class PengujianItem extends Model
         'code',
         'name',
         'qr_token',
+        'qr_content',
         'data',
     ];
 

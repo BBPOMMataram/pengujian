@@ -7,16 +7,23 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PengujianController::class, 'index'])->name('pengujian.index');
 Route::post('/upload', [PengujianController::class, 'upload'])->name('pengujian.upload');
 
-// Template & Sample Data
-Route::get('/download-template', [PengujianController::class, 'downloadTemplate'])->name('pengujian.template');
-Route::post('/load-sample', [PengujianController::class, 'loadSampleData'])->name('pengujian.sample');
+// Templates (2-Column & Multi-Column)
+Route::get('/download-template', [PengujianController::class, 'downloadTemplateTwoColumn'])->name('pengujian.template');
+Route::get('/download-template-2col', [PengujianController::class, 'downloadTemplateTwoColumn'])->name('pengujian.template.2col');
+Route::get('/download-template-full', [PengujianController::class, 'downloadTemplateFull'])->name('pengujian.template.full');
 
-// Public Scan Endpoint (Outputs PDF when scanned with smartphone camera)
+// Sample Data Loaders
+Route::post('/load-sample', [PengujianController::class, 'loadSampleTwoColumn'])->name('pengujian.sample');
+Route::post('/load-sample-2col', [PengujianController::class, 'loadSampleTwoColumn'])->name('pengujian.sample.2col');
+Route::post('/load-sample-full', [PengujianController::class, 'loadSampleData'])->name('pengujian.sample.full');
+
+// Public Scan Endpoint
 Route::get('/scan/{qrToken}', [PengujianController::class, 'scan'])->name('pengujian.scan');
 
-// Direct PDF Generation Routes
+// PDF Generation Routes (Per-Row & Batch)
 Route::get('/item/{id}/pdf', [PengujianController::class, 'pdf'])->name('pengujian.pdf');
 Route::get('/item/{id}/pdf-fpdf', [PengujianController::class, 'pdfFpdf'])->name('pengujian.pdf.fpdf');
+Route::get('/batch/{batchId}/pdf-all', [PengujianController::class, 'pdfBatch'])->name('pengujian.batch.pdf');
 
 // Data Cleanup
 Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy');

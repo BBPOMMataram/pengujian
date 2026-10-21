@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('code')->nullable();
             $table->string('name')->nullable();
             $table->string('qr_token', 64)->unique();
+            $table->text('qr_content')->nullable();
             $table->json('data');
             $table->timestamps();
         });

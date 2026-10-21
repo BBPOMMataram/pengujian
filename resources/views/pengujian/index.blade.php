@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Pengujian Laboratorium - Upload Excel & QR Code PDF</title>
-    <!-- Tailwind CSS CDN for instant, zero-build rendering -->
+    <title>Sistem Pengujian Laboratorium BBPOM - Upload Excel & Generator QR Code PDF</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,32 +34,64 @@
 
     <!-- TOP HEADER -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-500/20">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#005baa] to-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-500/20">
                     BPOM
                 </div>
                 <div>
                     <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                        Laboratorium Pengujian BPOM Mataram
+                        Laboratorium Pengujian BBPOM di Mataram
                     </h1>
                     <p class="text-xs text-slate-500">
-                        Upload Excel &bull; Generator QR Code &bull; Scan Langsung Dokumen PDF
+                        Unggah Excel &bull; Otomatis Generate QR Code &bull; Pop-up Detail &bull; Export PDF Per Baris
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <a href="{{ route('pengujian.template') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-2xs">
-                    <span class="material-symbols-outlined text-[17px]">download</span>
-                    <span>Download Template Excel</span>
-                </a>
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <!-- Dropdown Download Template -->
+                <div class="relative inline-block text-left" id="template-dropdown-wrapper">
+                    <button type="button" onclick="toggleTemplateMenu()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-2xs">
+                        <span class="material-symbols-outlined text-[17px]">download</span>
+                        <span>Download Template</span>
+                        <span class="material-symbols-outlined text-[14px]">expand_more</span>
+                    </button>
+                    <div id="template-menu" class="hidden absolute right-0 mt-1 w-64 rounded-xl bg-white shadow-lg border border-slate-200 py-1.5 z-40 text-xs">
+                        <a href="{{ route('pengujian.template.2col') }}" class="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800">
+                            <span class="material-symbols-outlined text-emerald-600 text-[18px]">table_rows</span>
+                            <div>
+                                <p class="font-bold">Template 2 Kolom</p>
+                                <p class="text-[10px] text-slate-500">1 Kolom Data &amp; 1 Kolom Kosong QR Code</p>
+                            </div>
+                        </a>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <a href="{{ route('pengujian.template.full') }}" class="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-800">
+                            <span class="material-symbols-outlined text-blue-600 text-[18px]">view_column</span>
+                            <div>
+                                <p class="font-bold">Template Multi-Kolom</p>
+                                <p class="text-[10px] text-slate-500">Format lengkap sampel laboratorium</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
 
-                <form action="{{ route('pengujian.sample') }}" method="POST" class="inline">
+                <!-- Quick Load Sample 2-Kolom -->
+                <form action="{{ route('pengujian.sample.2col') }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors shadow-2xs">
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-[#005baa] border border-blue-200 hover:bg-blue-100 transition-colors shadow-2xs" title="Muat contoh format 1 kolom data & 1 kolom kosong">
                         <span class="material-symbols-outlined text-[17px]">science</span>
-                        <span>Muat Data Contoh</span>
+                        <span>Contoh 2-Kolom</span>
+                    </button>
+                </form>
+
+                <!-- Quick Load Sample Multi-Kolom -->
+                <form action="{{ route('pengujian.sample.full') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors shadow-2xs" title="Muat contoh data laboratorium multi-kolom">
+                        <span class="material-symbols-outlined text-[17px]">dataset</span>
+                        <span>Contoh Lengkap</span>
                     </button>
                 </form>
 
@@ -68,7 +100,7 @@
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-rose-600 hover:bg-rose-50 transition-colors" title="Kosongkan Semua Data">
                             <span class="material-symbols-outlined text-[17px]">delete_sweep</span>
-                            <span class="hidden md:inline">Reset</span>
+                            <span class="hidden lg:inline">Reset</span>
                         </button>
                     </form>
                 @endif
@@ -117,38 +149,38 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
                     <div>
                         <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-blue-600">upload_file</span>
+                            <span class="material-symbols-outlined text-[#005baa]">upload_file</span>
                             Unggah File Data Pengujian (Excel / CSV)
                         </h2>
                         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-                            Pilih file spreadsheet yang berisi daftar sampel pengujian. Sistem otomatis membaca seluruh kolom dan membuat QR code untuk tiap baris.
+                            Unggah file Excel berisi <strong>1 kolom data dan 1 kolom kosong</strong> (atau format multi-kolom). Sistem otomatis menghasilkan <strong>QR Code tepat di kolom sampingnya</strong> yang memuat informasi dari data tersebut.
                         </p>
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-                        <span class="material-symbols-outlined text-blue-600 text-[18px]">info</span>
-                        <span>Format didukung: <strong>.xlsx, .xls, .csv</strong></span>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 shrink-0">
+                        <span class="material-symbols-outlined text-[#005baa] text-[18px]">info</span>
+                        <span>Mendukung: <strong>.xlsx, .xls, .csv</strong></span>
                     </div>
                 </div>
 
                 <form action="{{ route('pengujian.upload') }}" method="POST" enctype="multipart/form-data" class="mt-5">
                     @csrf
-                    <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 group">
+                    <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-[#005baa] rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 group">
                         <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls,.csv" class="hidden" required onchange="handleFileSelected(this)">
                         
-                        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-100/70 text-blue-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-100/70 text-[#005baa] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                             <span class="material-symbols-outlined text-3xl">cloud_upload</span>
                         </div>
 
                         <div id="file-label" class="space-y-1">
                             <p class="text-sm font-semibold text-slate-700">
-                                Klik untuk memilih file Excel atau tarik & letakkan ke sini
+                                Klik untuk memilih file Excel atau seret &amp; letakkan ke sini
                             </p>
                             <p class="text-xs text-slate-400">
-                                Maksimal ukuran file: 20 MB
+                                Contoh: Kolom A berisi Data/Nama Sampel, Kolom B kosong (QR Code akan ter-generate otomatis)
                             </p>
                         </div>
 
-                        <div id="file-selected-name" class="hidden mt-3 text-xs sm:text-sm font-semibold text-blue-700 bg-blue-100/60 inline-flex items-center gap-2 px-3 py-1.5 rounded-full">
+                        <div id="file-selected-name" class="hidden mt-3 text-xs sm:text-sm font-semibold text-[#005baa] bg-blue-100/60 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full">
                             <span class="material-symbols-outlined text-base">description</span>
                             <span id="selected-filename-text">-</span>
                         </div>
@@ -157,12 +189,12 @@
                     <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="text-xs text-slate-500 flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-emerald-600 text-[18px]">verified</span>
-                            <span>Ketika QR Code di-scan, output berupa dokumen <strong>PDF Resmi Hasil Pengujian</strong>.</span>
+                            <span>QR Code otomatis berisikan informasi teks kolom sebelahnya &amp; dapat diekspor ke PDF per baris.</span>
                         </div>
 
-                        <button type="submit" id="btn-submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition-all">
-                            <span class="material-symbols-outlined text-[19px]">bolt</span>
-                            <span>Proses & Tampilkan Data</span>
+                        <button type="submit" id="btn-submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#005baa] hover:bg-[#004887] active:scale-98 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition-all">
+                            <span class="material-symbols-outlined text-[19px]">qr_code_scanner</span>
+                            <span>Proses &amp; Generate QR Code</span>
                         </button>
                     </div>
                 </form>
@@ -173,54 +205,64 @@
         @if($batches->isNotEmpty())
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pilih Batch Unggahan:</span>
+                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pilih Batch:</span>
                     <div class="flex items-center gap-1.5 flex-wrap">
                         @foreach($batches as $b)
                             <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
-                               class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
+                               class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
                                 {{ $b->filename ?: $b->batch_id }} ({{ $b->total_items }} data)
                             </a>
                         @endforeach
                     </div>
                 </div>
 
-                <!-- Search box -->
-                <form action="{{ route('pengujian.index') }}" method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="batch" value="{{ $selectedBatchId }}">
-                    <div class="relative">
-                        <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari kode/nama sampel..." 
-                               class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-48 sm:w-64">
-                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
-                    </div>
-                    @if(request('q'))
-                        <a href="{{ route('pengujian.index', ['batch' => $selectedBatchId]) }}" class="text-xs text-rose-600 hover:underline">Reset</a>
+                <!-- Search and Batch Actions -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    @if($selectedBatchId && $items->isNotEmpty())
+                        <a href="{{ route('pengujian.batch.pdf', $selectedBatchId) }}" 
+                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs">
+                            <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                            <span>Export Batch ke PDF</span>
+                        </a>
                     @endif
-                </form>
+
+                    <form action="{{ route('pengujian.index') }}" method="GET" class="flex items-center gap-2">
+                        <input type="hidden" name="batch" value="{{ $selectedBatchId }}">
+                        <div class="relative">
+                            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari data/kode/informasi..." 
+                                   class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] w-48 sm:w-60">
+                            <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
+                        </div>
+                        @if(request('q'))
+                            <a href="{{ route('pengujian.index', ['batch' => $selectedBatchId]) }}" class="text-xs text-rose-600 hover:underline">Reset</a>
+                        @endif
+                    </form>
+                </div>
             </div>
         @endif
 
-        <!-- SECTION 3: DATA TABLE WITH QR CODE COLUMN -->
+        <!-- SECTION 3: DATA TABLE WITH QR CODE COLUMN & ACTIONS -->
         <section class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-indigo-600">table_chart</span>
-                        Tabel Data Pengujian & QR Code
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        <span class="material-symbols-outlined text-[#005baa]">table_chart</span>
+                        Tabel Data Pengujian &amp; QR Code
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-[#005baa]">
                             {{ $items->count() }} Baris
                         </span>
                     </h3>
                     @if($currentBatch)
                         <p class="text-xs text-slate-500 mt-0.5">
-                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong> &bull; Diunggah pada {{ $currentBatch->created_at->format('d/m/Y H:i') }}
+                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong> &bull; Diunggah pada {{ $currentBatch->created_at->format('d/m/Y H:i') }} WITA
                         </p>
                     @endif
                 </div>
 
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="flex items-center gap-1 text-slate-500">
+                <div class="flex items-center gap-3 text-xs text-slate-500">
+                    <span class="flex items-center gap-1.5">
                         <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                        Kolom paling kanan: <strong>QR Code & Aksi Popup/PDF</strong>
+                        Kolom QR Code otomatis terisi dari info kolom sebelahnya
                     </span>
                 </div>
             </div>
@@ -230,20 +272,20 @@
                     <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
                         <span class="material-symbols-outlined text-3xl">inventory_2</span>
                     </div>
-                    <h4 class="text-sm font-semibold text-slate-700">Belum ada data pengujian</h4>
-                    <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                        Silakan unggah file Excel di atas atau klik tombol <strong>"Muat Data Contoh"</strong> untuk melihat demo tabel dan QR code.
+                    <h4 class="text-sm font-semibold text-slate-700">Belum ada data yang ditampilkan</h4>
+                    <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                        Silakan unggah file Excel Anda di atas (bisa 1 kolom data &amp; 1 kolom kosong) atau coba dengan tombol contoh di bawah.
                     </p>
-                    <div class="mt-4 flex items-center justify-center gap-2">
-                        <a href="{{ route('pengujian.template') }}" class="btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                            <span class="material-symbols-outlined text-[16px]">download</span>
-                            Download Template Excel
+                    <div class="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                        <a href="{{ route('pengujian.template.2col') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-xs">
+                            <span class="material-symbols-outlined text-[17px]">download</span>
+                            Download Template 2-Kolom
                         </a>
-                        <form action="{{ route('pengujian.sample') }}" method="POST">
+                        <form action="{{ route('pengujian.sample.2col') }}" method="POST">
                             @csrf
-                            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                                <span class="material-symbols-outlined text-[16px]">play_arrow</span>
-                                Muat Contoh Sekarang
+                            <button type="submit" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-[#005baa] text-white hover:bg-[#004887] transition shadow-xs">
+                                <span class="material-symbols-outlined text-[17px]">play_arrow</span>
+                                Muat Contoh 2-Kolom Sekarang
                             </button>
                         </form>
                     </div>
@@ -252,43 +294,40 @@
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-slate-100/80 text-slate-700 border-b border-slate-200">
+                            <tr class="bg-slate-100/90 text-slate-700 border-b border-slate-200">
                                 <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-center w-12">No</th>
-                                <th class="py-3 px-3.5 font-bold uppercase tracking-wider min-w-[120px]">Kode Sampel</th>
-                                <th class="py-3 px-3.5 font-bold uppercase tracking-wider min-w-[180px]">Nama Sampel</th>
                                 
-                                <!-- DYNAMIC HEADERS FROM EXCEL -->
+                                <!-- DYNAMIC DATA HEADERS FROM EXCEL -->
                                 @foreach($headers as $h)
-                                    @if(!in_array(strtolower($h), ['no', 'kode_sampel', 'nama_sampel', 'kodesampel', 'namasampel']))
-                                        <th class="py-3 px-3.5 font-semibold text-slate-600 uppercase tracking-wider min-w-[140px] whitespace-nowrap">
+                                    @if(!str_contains(strtolower($h), 'qr'))
+                                        <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-slate-800 min-w-[180px]">
                                             {{ str_replace(['_', '-'], ' ', $h) }}
                                         </th>
                                     @endif
                                 @endforeach
 
-                                <!-- RIGHTMOST COLUMN: QR CODE & AKSI -->
-                                <th class="py-3 px-4 font-bold uppercase tracking-wider text-center bg-blue-50/80 text-blue-900 border-l border-blue-200 min-w-[210px] sticky right-0 z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.02)]">
-                                    QR Code & Aksi
+                                <!-- GENERATED QR CODE COLUMN (DI KOLOM SAMPINGNYA) -->
+                                <th class="py-3 px-4 font-bold uppercase tracking-wider text-center bg-blue-50/90 text-[#005baa] border-l border-blue-200 min-w-[130px]">
+                                    QR Code Ter-generate
+                                </th>
+
+                                <!-- AKSI PER BARIS DATA -->
+                                <th class="py-3 px-4 font-bold uppercase tracking-wider text-center bg-slate-100 text-slate-700 border-l border-slate-200 min-w-[170px] sticky right-0 z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.03)]">
+                                    Aksi Baris Data
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($items as $index => $item)
-                                <tr class="hover:bg-blue-50/30 transition-colors group">
-                                    <td class="py-3 px-3.5 text-center text-slate-400 font-mono">
+                                <tr class="hover:bg-blue-50/20 transition-colors group">
+                                    <td class="py-3 px-3.5 text-center text-slate-400 font-mono font-medium">
                                         {{ $index + 1 }}
-                                    </td>
-                                    <td class="py-3 px-3.5 font-bold text-blue-700 whitespace-nowrap">
-                                        {{ $item->code ?: ('SMP-' . str_pad($item->id, 4, '0', STR_PAD_LEFT)) }}
-                                    </td>
-                                    <td class="py-3 px-3.5 font-semibold text-slate-900">
-                                        {{ $item->name ?: '-' }}
                                     </td>
 
                                     <!-- DYNAMIC DATA CELLS -->
                                     @foreach($headers as $h)
-                                        @if(!in_array(strtolower($h), ['no', 'kode_sampel', 'nama_sampel', 'kodesampel', 'namasampel']))
-                                            <td class="py-3 px-3.5 text-slate-600 max-w-xs truncate" title="{{ is_array($item->data[$h] ?? null) ? json_encode($item->data[$h]) : ($item->data[$h] ?? '-') }}">
+                                        @if(!str_contains(strtolower($h), 'qr'))
+                                            <td class="py-3 px-3.5 text-slate-900 font-medium max-w-sm">
                                                 @php
                                                     $val = $item->data[$h] ?? '-';
                                                 @endphp
@@ -311,38 +350,40 @@
                                         @endif
                                     @endforeach
 
-                                    <!-- KOLOM PALING KANAN: GAMBAR QR CODE & TOMBOL AKSI POPUP -->
-                                    <td class="py-2.5 px-4 bg-blue-50/40 border-l border-blue-100 sticky right-0 z-10 group-hover:bg-blue-50/70 transition-colors">
-                                        <div class="flex items-center justify-center gap-3">
-                                            
-                                            <!-- QR CODE THUMBNAIL (Clickable to open popup) -->
+                                    <!-- KOLOM SAMPINGNYA: QR CODE IMAGE -->
+                                    <td class="py-2.5 px-4 bg-blue-50/30 border-l border-blue-100 text-center">
+                                        <div class="flex items-center justify-center">
                                             <button type="button" 
-                                                    class="p-1 bg-white rounded-lg border border-slate-200 hover:border-blue-500 hover:shadow-sm transition-all group/qr shrink-0" 
-                                                    title="Klik untuk memperbesar QR Code"
-                                                    onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code) }}', '{{ addslashes($item->name) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}')">
-                                                <div class="w-14 h-14 flex items-center justify-center">
+                                                    class="p-1 bg-white rounded-xl border border-slate-200 hover:border-[#005baa] hover:shadow-md transition-all group/qr shrink-0" 
+                                                    title="Klik untuk melihat Pop-up QR Code"
+                                                    onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code ?: 'Sampel #' . $item->row_number) }}', '{{ addslashes($item->name ?: '-') }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                <div class="w-14 h-14 flex items-center justify-center p-0.5">
                                                     {!! $item->qr_svg_small !!}
                                                 </div>
                                             </button>
+                                        </div>
+                                    </td>
 
-                                            <!-- AKSI: TOMBOL LIHAT QR & UNDUH PDF -->
-                                            <div class="flex flex-col gap-1 text-left">
-                                                <button type="button"
-                                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-colors"
-                                                        onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code) }}', '{{ addslashes($item->name) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}')">
-                                                    <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
-                                                    <span>Lihat QR</span>
-                                                </button>
+                                    <!-- KOLOM AKSI: POP-UP QR & EXPORT PDF PER BARIS -->
+                                    <td class="py-2.5 px-4 bg-white border-l border-slate-200 sticky right-0 z-10 group-hover:bg-blue-50/30 transition-colors">
+                                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                            <!-- Tombol Pop-up QR -->
+                                            <button type="button"
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-2xs transition-colors"
+                                                    title="Buka pop-up QR Code besar"
+                                                    onclick="openQrModal({{ $item->id }}, '{{ addslashes($item->code ?: 'Sampel #' . $item->row_number) }}', '{{ addslashes($item->name ?: '-') }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                <span class="material-symbols-outlined text-[15px]">qr_code_2</span>
+                                                <span>Pop-up QR</span>
+                                            </button>
 
-                                                <a href="{{ route('pengujian.pdf', $item->id) }}" 
-                                                   target="_blank"
-                                                   class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors"
-                                                   title="Buka Dokumen PDF Resmi (DomPDF)">
-                                                    <span class="material-symbols-outlined text-rose-600 text-[14px]">picture_as_pdf</span>
-                                                    <span>Buka PDF</span>
-                                                </a>
-                                            </div>
-
+                                            <!-- Tombol Export PDF Per Baris -->
+                                            <a href="{{ route('pengujian.pdf', $item->id) }}" 
+                                               target="_blank"
+                                               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs transition-colors"
+                                               title="Export dokumen PDF pemetaan per baris data ini">
+                                                <span class="material-symbols-outlined text-rose-600 text-[15px]">picture_as_pdf</span>
+                                                <span>Export PDF</span>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -362,22 +403,22 @@
         </div>
     </footer>
 
-    <!-- POPUP MODAL QR CODE -->
+    <!-- POPUP MODAL QR CODE BESAR -->
     <div id="qr-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-opacity">
-        <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all text-slate-800">
+        <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all text-slate-800">
             
             <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white flex items-center justify-between">
+            <div class="bg-gradient-to-r from-[#005baa] via-blue-700 to-indigo-700 p-5 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                        <span class="material-symbols-outlined text-xl">qr_code_2</span>
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white backdrop-blur-xs">
+                        <span class="material-symbols-outlined text-2xl">qr_code_2</span>
                     </div>
                     <div>
-                        <h3 class="font-bold text-sm leading-tight">Detail QR Code Sampel</h3>
-                        <p class="text-xs text-blue-100 mt-0.5">Scan untuk melihat PDF resmi pengujian</p>
+                        <h3 class="font-bold text-base leading-tight">Pop-up QR Code Sampel</h3>
+                        <p class="text-xs text-blue-100 mt-0.5">Informasi langsung dari data kolom sebelah</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeQrModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+                <button type="button" onclick="closeQrModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition text-lg font-bold">
                     &times;
                 </button>
             </div>
@@ -385,53 +426,57 @@
             <!-- Modal Body -->
             <div class="p-6 text-center space-y-4">
                 
-                <!-- Sample Name & Code Badge -->
+                <!-- Sample Header & Code -->
                 <div>
-                    <span id="modal-sample-code" class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 tracking-wide font-mono">
+                    <span id="modal-sample-code" class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-[#005baa] tracking-wide font-mono">
                         SMP-0001
                     </span>
                     <h4 id="modal-sample-name" class="text-base font-bold text-slate-900 mt-1.5 leading-snug">
-                        Nama Sampel
+                        Nama Sampel Pengujian
                     </h4>
                 </div>
 
-                <!-- Big QR Code Box -->
+                <!-- Big QR Code Container (Local High-Res SVG) -->
                 <div class="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200 inline-block shadow-inner">
-                    <div id="modal-qr-container" class="w-56 h-56 mx-auto flex items-center justify-center bg-white p-2 rounded-xl shadow-xs">
-                        <!-- Injected via JS -->
+                    <div id="modal-qr-container" class="w-60 h-60 mx-auto flex items-center justify-center bg-white p-2 rounded-xl shadow-xs">
+                        <!-- Injected via JS using server-side SVG Base64 -->
                     </div>
                 </div>
 
-                <!-- Guidance Info -->
-                <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-xs text-blue-900 flex items-start gap-2 text-left">
-                    <span class="material-symbols-outlined text-blue-600 text-lg shrink-0 mt-0.5">document_scanner</span>
-                    <div>
-                        <p class="font-bold">Arahkan kamera HP ke QR Code di atas!</p>
-                        <p class="text-[11px] text-blue-700 mt-0.5">Ketika dipindai, kamera akan membuka tautan yang langsung menampilkan atau mengunduh dokumen PDF resmi Hasil Pengujian Sampel.</p>
+                <!-- Card: Isi Informasi QR Code (Dari Kolom Sebelahnya) -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-left space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-emerald-600 text-[16px]">info</span>
+                            Isi Informasi QR Code (Dari Kolom Sebelahnya):
+                        </span>
+                        <button type="button" onclick="copyQrContent()" id="btn-copy" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#005baa] hover:underline">
+                            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                            <span id="btn-copy-text">Salin Teks</span>
+                        </button>
+                    </div>
+                    <div id="modal-qr-content" class="text-xs font-mono text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 break-all select-all font-semibold">
+                        -
                     </div>
                 </div>
 
                 <!-- Action Buttons in Modal -->
-                <div class="grid grid-cols-2 gap-2.5 pt-2">
-                    <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all">
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <a id="modal-btn-download-svg" href="#" download="qr-code.svg" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all border border-slate-200">
+                        <span class="material-symbols-outlined text-base">download</span>
+                        <span>Unduh QR (SVG)</span>
+                    </a>
+
+                    <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all">
                         <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                        <span>Buka PDF (DomPDF)</span>
+                        <span>Export PDF Baris Ini</span>
                     </a>
-
-                    <a id="modal-btn-fpdf" href="#" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs transition-all">
-                        <span class="material-symbols-outlined text-base">description</span>
-                        <span>Buka PDF (FPDF)</span>
-                    </a>
-                </div>
-
-                <!-- Scan URL display -->
-                <div class="pt-1 text-[10px] text-slate-400 truncate font-mono" id="modal-target-url">
-                    https://...
                 </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-end">
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span class="text-[11px]">Dapat dipindai langsung menggunakan kamera HP</span>
                 <button type="button" onclick="closeQrModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-200 transition">
                     Tutup
                 </button>
@@ -445,32 +490,34 @@
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('excel_file');
 
-        dropzone.addEventListener('click', () => fileInput.click());
+        if (dropzone && fileInput) {
+            dropzone.addEventListener('click', () => fileInput.click());
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.add('border-blue-600', 'bg-blue-50/40');
-            }, false);
-        });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('border-[#005baa]', 'bg-blue-50/40');
+                }, false);
+            });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.remove('border-blue-600', 'bg-blue-50/40');
-            }, false);
-        });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('border-[#005baa]', 'bg-blue-50/40');
+                }, false);
+            });
 
-        dropzone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                handleFileSelected(fileInput);
-            }
-        });
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelected(fileInput);
+                }
+            });
+        }
 
         function handleFileSelected(input) {
             if (input.files && input.files[0]) {
@@ -483,23 +530,46 @@
             }
         }
 
-        // Modal Handlers
-        const modal = document.getElementById('qr-modal');
+        // Dropdown toggle
+        function toggleTemplateMenu() {
+            const menu = document.getElementById('template-menu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
 
-        function openQrModal(id, code, name, scanUrl, pdfUrl, fpdfUrl) {
+        window.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('template-dropdown-wrapper');
+            const menu = document.getElementById('template-menu');
+            if (wrapper && !wrapper.contains(e.target) && menu) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Pop-up Modal Handlers
+        const modal = document.getElementById('qr-modal');
+        let currentRawQrContent = '';
+
+        function openQrModal(id, code, name, qrContent, scanUrl, pdfUrl, fpdfUrl, qrBase64) {
+            currentRawQrContent = qrContent || code;
             document.getElementById('modal-sample-code').innerText = code;
             document.getElementById('modal-sample-name').innerText = name;
-            document.getElementById('modal-target-url').innerText = scanUrl;
+            document.getElementById('modal-qr-content').innerText = currentRawQrContent;
             document.getElementById('modal-btn-pdf').href = pdfUrl;
-            document.getElementById('modal-btn-fpdf').href = fpdfUrl;
 
-            // Generate clean QR code via QuickChart API or SVG rendering
+            // Render high-res SVG directly from server base64
             const qrContainer = document.getElementById('modal-qr-container');
+            const svgDataUri = 'data:image/svg+xml;base64,' + qrBase64;
             qrContainer.innerHTML = `
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(scanUrl)}&margin=4" 
+                <img src="${svgDataUri}" 
                      alt="QR Code ${code}" 
                      class="w-full h-full object-contain" />
             `;
+
+            // Setup download link for SVG
+            const downloadBtn = document.getElementById('modal-btn-download-svg');
+            downloadBtn.href = svgDataUri;
+            downloadBtn.download = 'QR-' + code.replace(/[^a-z0-9]/gi, '_') + '.svg';
 
             modal.classList.remove('hidden');
         }
@@ -508,7 +578,18 @@
             modal.classList.add('hidden');
         }
 
-        // Close on ESC key or clicking outside
+        function copyQrContent() {
+            if (!currentRawQrContent) return;
+            navigator.clipboard.writeText(currentRawQrContent).then(() => {
+                const textEl = document.getElementById('btn-copy-text');
+                textEl.innerText = 'Tersalin!';
+                setTimeout(() => {
+                    textEl.innerText = 'Salin Teks';
+                }, 2000);
+            });
+        }
+
+        // Close on ESC key or clicking backdrop
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
                 closeQrModal();

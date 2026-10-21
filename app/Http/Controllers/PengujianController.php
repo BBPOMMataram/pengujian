@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\SamplePengujianExport;
+use App\Exports\SampleTwoColumnExport;
 use App\Imports\PengujianImport;
 use App\Models\PengujianItem;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -41,6 +42,7 @@ class PengujianController extends Controller
             $itemsQuery->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                   ->orWhere('name', 'like', "%{$search}%")
+                  ->orWhere('qr_content', 'like', "%{$search}%")
                   ->orWhere('data', 'like', "%{$search}%");
             });
         }
@@ -53,11 +55,15 @@ class PengujianController extends Controller
             $targetUrl = route('pengujian.scan', $item->qr_token);
             $item->target_url = $targetUrl;
             
-            // Generate small SVG for table column
-            $item->qr_svg_small = (string) QrCode::size(70)->margin(1)->generate($targetUrl);
+            // The QR code contains the information from the adjacent column!
+            $contentToEncode = $item->qr_content ?: ($item->code ?: $targetUrl);
+            $item->qr_content_display = $contentToEncode;
+
+            // Generate small SVG for table column (di kolom sampingnya)
+            $item->qr_svg_small = (string) QrCode::size(68)->margin(1)->generate($contentToEncode);
             
             // Generate large SVG for popup modal
-            $item->qr_svg_large = (string) QrCode::size(240)->margin(2)->generate($targetUrl);
+            $item->qr_svg_large = (string) QrCode::size(250)->margin(2)->generate($contentToEncode);
             $item->qr_base64 = base64_encode($item->qr_svg_large);
 
             if (is_array($item->data)) {
@@ -103,22 +109,68 @@ class PengujianController extends Controller
             $count = PengujianItem::where('batch_id', $batchId)->count();
 
             return redirect()->route('pengujian.index', ['batch' => $batchId])
-                ->with('success', "Berhasil mengunggah file \"{$originalName}\"! {$count} baris data berhasil diproses dengan QR Code siap scan.");
+                ->with('success', "Berhasil mengunggah file \"{$originalName}\"! {$count} baris data berhasil dipetakan dengan QR Code di kolom sampingnya.");
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
         }
     }
 
     /**
-     * Download the official sample Excel template.
+     * Download template minimal 2-kolom (Kolom Data & Kolom Kosong untuk QR Code).
      */
-    public function downloadTemplate()
+    public function downloadTemplateTwoColumn()
     {
-        return Excel::download(new SamplePengujianExport, 'Contoh_Data_Pengujian_Laboratorium.xlsx');
+        return Excel::download(new SampleTwoColumnExport, 'Template_2_Kolom_Data_dan_QR_Kosong.xlsx');
     }
 
     /**
-     * Quick-load sample data directly into the database.
+     * Download template multi-kolom lengkap laboratorium.
+     */
+    public function downloadTemplateFull()
+    {
+        return Excel::download(new SamplePengujianExport, 'Template_Lengkap_Pengujian_Laboratorium.xlsx');
+    }
+
+    /**
+     * Quick-load sample data: 2-Kolom (Data + QR Code).
+     */
+    public function loadSampleTwoColumn()
+    {
+        $export = new SampleTwoColumnExport();
+        $headings = $export->headings();
+        $rows = $export->array();
+
+        $batchId = 'SAMPLE-2COL-' . date('Ymd-His');
+        $filename = 'Contoh_2_Kolom_Data_dan_QR.xlsx';
+
+        $count = 0;
+        foreach ($rows as $index => $rowValues) {
+            $dataVal = $rowValues[0] ?? "Sampel #" . ($index + 1);
+
+            $data = [
+                'Data Informasi' => $dataVal,
+                'QR Code' => '(Otomatis Di-generate)',
+            ];
+
+            PengujianItem::create([
+                'batch_id' => $batchId,
+                'filename' => $filename,
+                'row_number' => $index + 1,
+                'code' => 'SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
+                'name' => $dataVal,
+                'qr_token' => Str::random(32),
+                'qr_content' => $dataVal,
+                'data' => $data,
+            ]);
+            $count++;
+        }
+
+        return redirect()->route('pengujian.index', ['batch' => $batchId])
+            ->with('success', "Berhasil memuat {$count} data contoh format 2-Kolom! QR code otomatis ter-generate dari isi kolom sebelahnya.");
+    }
+
+    /**
+     * Quick-load sample data: Multi-kolom pengujian laboratorium.
      */
     public function loadSampleData()
     {
@@ -126,31 +178,35 @@ class PengujianController extends Controller
         $headings = $export->headings();
         $rows = $export->array();
 
-        $batchId = 'SAMPLE-' . date('Ymd-His');
-        $filename = 'Contoh_Data_Pengujian_Laboratorium.xlsx';
+        $batchId = 'SAMPLE-FULL-' . date('Ymd-His');
+        $filename = 'Contoh_Lengkap_Pengujian_Laboratorium.xlsx';
 
         $count = 0;
         foreach ($rows as $index => $rowValues) {
             $data = [];
             foreach ($headings as $i => $h) {
-                $slug = Str::slug($h, '_');
-                $data[$slug] = $rowValues[$i] ?? null;
+                $data[$h] = $rowValues[$i] ?? null;
             }
+
+            $code = $data['Kode Sampel'] ?? ('SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT));
+            $name = $data['Nama Sampel'] ?? 'Sampel Pengujian';
+            $qrContent = "{$code} | {$name} | Hasil: " . ($data['Kesimpulan'] ?? 'MS');
 
             PengujianItem::create([
                 'batch_id' => $batchId,
                 'filename' => $filename,
                 'row_number' => $index + 1,
-                'code' => $data['kode_sampel'] ?? ('SMP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT)),
-                'name' => $data['nama_sampel'] ?? 'Sampel Pengujian',
+                'code' => $code,
+                'name' => $name,
                 'qr_token' => Str::random(32),
+                'qr_content' => $qrContent,
                 'data' => $data,
             ]);
             $count++;
         }
 
         return redirect()->route('pengujian.index', ['batch' => $batchId])
-            ->with('success', "Berhasil memuat {$count} data sampel contoh laboratorium BPOM dengan QR Code!");
+            ->with('success', "Berhasil memuat {$count} data sampel contoh multi-kolom laboratorium BPOM dengan QR Code!");
     }
 
     /**
@@ -164,7 +220,7 @@ class PengujianController extends Controller
     }
 
     /**
-     * Generate PDF using barryvdh/laravel-dompdf.
+     * Generate PDF using barryvdh/laravel-dompdf for single row.
      */
     public function pdf(int $id, Request $request)
     {
@@ -175,17 +231,49 @@ class PengujianController extends Controller
     }
 
     /**
-     * Helper to render DomPDF.
+     * Batch export: export all items in a batch to a combined PDF.
+     */
+    public function pdfBatch(string $batchId, Request $request)
+    {
+        $items = PengujianItem::where('batch_id', $batchId)->orderBy('row_number', 'asc')->get();
+        if ($items->isEmpty()) {
+            return redirect()->route('pengujian.index')->with('error', 'Batch data tidak ditemukan.');
+        }
+
+        foreach ($items as $item) {
+            $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
+            $qrSvg = (string) QrCode::size(120)->margin(1)->generate($contentToEncode);
+            $item->qr_base64 = base64_encode($qrSvg);
+        }
+
+        $pdf = Pdf::loadView('pdf.batch-pengujian', [
+            'items' => $items,
+            'batchId' => $batchId,
+            'filename' => $items->first()->filename ?? 'Batch_Pengujian',
+        ]);
+
+        $pdf->setPaper('A4', 'portrait');
+
+        $downloadFilename = 'LHP-Batch-' . Str::slug($batchId) . '.pdf';
+        return $pdf->download($downloadFilename);
+    }
+
+    /**
+     * Helper to render DomPDF for a single row.
      */
     protected function generateDomPdf(PengujianItem $item, string $disposition = 'inline')
     {
         $targetUrl = route('pengujian.scan', $item->qr_token);
-        $qrSvg = (string) QrCode::size(120)->margin(1)->generate($targetUrl);
+        
+        // The QR code contains the information from the adjacent column!
+        $contentToEncode = $item->qr_content ?: ($item->code ?: $targetUrl);
+        $qrSvg = (string) QrCode::size(120)->margin(1)->generate($contentToEncode);
         $qrBase64 = base64_encode($qrSvg);
 
         $pdf = Pdf::loadView('pdf.laporan-pengujian', [
             'item' => $item,
             'qrBase64' => $qrBase64,
+            'qrContent' => $contentToEncode,
             'targetUrl' => $targetUrl,
         ]);
 
@@ -206,7 +294,7 @@ class PengujianController extends Controller
     public function pdfFpdf(int $id)
     {
         $item = PengujianItem::findOrFail($id);
-        $targetUrl = route('pengujian.scan', $item->qr_token);
+        $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
 
         $fpdf = new FPDF('P', 'mm', 'A4');
         $fpdf->AddPage();
@@ -248,95 +336,82 @@ class PengujianController extends Controller
 
         $curY = $fpdf->GetY() + 3;
         $fpdf->SetXY(20, $curY);
-        $fpdf->SetFont('Arial', 'B', 10);
+        $fpdf->SetFont('Arial', 'B', 11);
         $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(120, 5, 'KODE SAMPEL: ' . ($item->code ?? '-'), 0, 1);
+        $fpdf->Cell(170, 6, $item->name ?: 'Sampel Pengujian', 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', '', 9);
-        $fpdf->SetTextColor(15, 23, 42);
-        $fpdf->Cell(120, 5, 'Nama Sampel: ' . ($item->name ?? '-'), 0, 1);
+        $fpdf->SetTextColor(51, 65, 85);
+        $fpdf->Cell(170, 5, 'Kode Sampel: ' . ($item->code ?: '-') . '   |   Baris: #' . $item->row_number, 0, 1);
 
         $fpdf->SetX(20);
         $fpdf->SetFont('Arial', 'I', 8);
         $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->Cell(120, 4, 'Verifikasi Token: ' . $item->qr_token, 0, 1);
+        $fpdf->Cell(170, 5, 'Isi QR Code: ' . substr($contentToEncode, 0, 80), 0, 1);
 
-        $fpdf->SetY($curY + 23);
-        $fpdf->Ln(4);
+        $fpdf->Ln(12);
 
-        // Section header
+        // Column Mapping Table
         $fpdf->SetFont('Arial', 'B', 10);
         $fpdf->SetTextColor(3, 66, 142);
-        $fpdf->Cell(0, 6, 'RINCIAN DATA HASIL PENGUJIAN', 0, 1, 'L');
+        $fpdf->Cell(0, 6, 'PEMETAAN DATA PER KOLOM EXCEL:', 0, 1);
         $fpdf->Ln(1);
 
         // Table Header
         $fpdf->SetFillColor(3, 66, 142);
         $fpdf->SetTextColor(255, 255, 255);
-        $fpdf->SetDrawColor(3, 66, 142);
         $fpdf->SetFont('Arial', 'B', 9);
         $fpdf->Cell(12, 7, 'No', 1, 0, 'C', true);
-        $fpdf->Cell(65, 7, 'Parameter / Kolom', 1, 0, 'L', true);
-        $fpdf->Cell(103, 7, 'Nilai Hasil Pengujian', 1, 1, 'L', true);
+        $fpdf->Cell(65, 7, 'Kolom Excel', 1, 0, 'L', true);
+        $fpdf->Cell(103, 7, 'Nilai Informasi', 1, 1, 'L', true);
 
         // Table Rows
+        $fpdf->SetTextColor(15, 23, 42);
         $fpdf->SetFont('Arial', '', 8.5);
-        $fpdf->SetTextColor(30, 41, 59);
-        $fpdf->SetDrawColor(203, 213, 225);
-
         $no = 1;
+        $fill = false;
         if (is_array($item->data)) {
-            foreach ($item->data as $key => $val) {
-                $bg = ($no % 2 === 0);
+            foreach ($item->data as $k => $v) {
                 $fpdf->SetFillColor(248, 250, 252);
-                $fpdf->Cell(12, 6, (string)$no++, 1, 0, 'C', $bg);
-                $fpdf->Cell(65, 6, ucwords(str_replace(['_', '-'], ' ', (string)$key)), 1, 0, 'L', $bg);
-                $valStr = is_array($val) ? json_encode($val) : (string)($val ?? '-');
-                $fpdf->Cell(103, 6, substr($valStr, 0, 65), 1, 1, 'L', $bg);
+                $fpdf->Cell(12, 6, (string)$no++, 1, 0, 'C', $fill);
+                $fpdf->Cell(65, 6, substr(str_replace(['_', '-'], ' ', (string)$k), 0, 35), 1, 0, 'L', $fill);
+                
+                $vStr = is_array($v) ? json_encode($v) : (string)($v ?? '-');
+                $fpdf->Cell(103, 6, substr($vStr, 0, 60), 1, 1, 'L', $fill);
+                $fill = !$fill;
             }
         }
 
-        $fpdf->Ln(6);
-        $fpdf->SetFont('Arial', 'I', 8);
-        $fpdf->SetTextColor(100, 116, 139);
-        $fpdf->MultiCell(0, 4, "Catatan: Dokumen laporan pengujian ini dibuat secara otomatis dengan plugin FPDF & Laravel. Pindai QR Code untuk memverifikasi keabsahan data.");
-
-        $fpdf->Ln(8);
-        $fpdf->SetFont('Arial', '', 9);
-        $fpdf->SetTextColor(15, 23, 42);
-        $fpdf->Cell(90, 5, 'Mengetahui, Penyelia', 0, 0, 'C');
-        $fpdf->Cell(90, 5, 'Mataram, ' . date('d F Y'), 0, 1, 'C');
         $fpdf->Ln(15);
-        $fpdf->SetFont('Arial', 'B', 9);
-        $fpdf->Cell(90, 5, 'Apt. I Made Sujana, S.Farm.', 0, 0, 'C');
-        $fpdf->Cell(90, 5, 'Apt. Lalu Naofal Arkan, S.Farm.', 0, 1, 'C');
+        $fpdf->SetFont('Arial', '', 8.5);
+        $fpdf->SetTextColor(100, 116, 139);
+        $fpdf->Cell(0, 5, 'Dicetak melalui Sistem Pengujian Laboratorium BBPOM di Mataram pada ' . date('d/m/Y H:i') . ' WITA', 0, 1, 'C');
 
-        return response($fpdf->Output('S', 'LHP-FPDF-' . $item->code . '.pdf'), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="LHP-FPDF-' . $item->code . '.pdf"',
-        ]);
+        return response($fpdf->Output('S', 'LHP-FPDF-' . ($item->code ?: 'sampel') . '.pdf'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="LHP-FPDF-' . ($item->code ?: 'sampel') . '.pdf"');
     }
 
     /**
-     * Delete an entire batch of data.
+     * Delete an entire batch.
      */
     public function destroyBatch(string $batchId)
     {
         $deleted = PengujianItem::where('batch_id', $batchId)->delete();
 
         return redirect()->route('pengujian.index')
-            ->with('success', "Batch data ({$deleted} baris) berhasil dihapus.");
+            ->with('success', "Batch \"{$batchId}\" ({$deleted} data) berhasil dihapus.");
     }
 
     /**
-     * Clear all records.
+     * Clear all data in database.
      */
     public function clearAll()
     {
         PengujianItem::truncate();
 
         return redirect()->route('pengujian.index')
-            ->with('success', 'Semua data pengujian berhasil dikosongkan.');
+            ->with('success', 'Semua data pengujian laboratorium berhasil dikosongkan.');
     }
 }
