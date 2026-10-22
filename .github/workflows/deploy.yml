@@ -16,9 +16,9 @@ jobs:
       - name: Deploy to pengujian.bbpommataram.id
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: 56710
+          host: ${{ secrets.SSH_HOST || 'bbpommataram.id' }}
+          username: ${{ secrets.SSH_USER || 'bbpom9725' }}
+          port: ${{ secrets.SSH_PORT || 56710 }}
           key: ${{ secrets.SSH_KEY }}
           debug: true
           script: |
