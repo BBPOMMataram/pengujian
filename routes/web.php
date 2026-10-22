@@ -33,6 +33,7 @@ Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])-
 Route::post('/batch/{batchId}/delete', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy.post');
 Route::post('/clear-all', [PengujianController::class, 'clearAll'])->name('pengujian.clear');
 
+
 // Diagnostic routes
 Route::get('/debug-log', function () {
     $logPath = storage_path('logs/laravel.log');
