@@ -519,7 +519,7 @@
                             <span id="btn-copy-text">Salin Teks</span>
                         </button>
                     </div>
-                    <div id="modal-qr-content" class="text-xs font-mono text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 break-all select-all font-semibold">
+                    <div id="modal-qr-content" class="text-xs font-mono text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 break-words whitespace-pre-line select-all font-semibold leading-relaxed">
                         -
                     </div>
                 </div>

@@ -385,12 +385,37 @@
 
         @else
             <!-- JIKA KOLOM <= 15: FORMAT TABULAR GRID HORIZONTAL BIASA -->
+            @php
+                $hasNoCol = false;
+                $hasQrCol = false;
+                foreach($group['headers'] as $h) {
+                    $hl = strtolower(trim($h));
+                    if (in_array($hl, ['no', 'nomor', 'no.'])) {
+                        $hasNoCol = true;
+                    }
+                    if (str_contains($hl, 'qr')) {
+                        $hasQrCol = true;
+                    }
+                }
+            @endphp
             <table class="tabular-table">
                 <thead>
                     <tr>
-                        <th class="col-no">No</th>
+                        @if(!$hasNoCol)
+                            <th class="col-no" style="width: 26px; text-align: center;">No</th>
+                        @endif
                         @foreach($group['headers'] as $h)
-                            @if(!str_contains(strtolower($h), 'qr'))
+                            @php
+                                $hLower = strtolower(trim($h));
+                                $isQr = str_contains($hLower, 'qr');
+                                $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
+                            @endphp
+
+                            @if($isQr)
+                                <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
+                            @elseif($isNo)
+                                <th class="col-no" style="width: 26px; text-align: center;">{{ $h }}</th>
+                            @else
                                 <th>
                                     @if(str_contains($h, ' - '))
                                         @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
@@ -402,23 +427,43 @@
                                 </th>
                             @endif
                         @endforeach
-                        <th class="col-qr">QR Code</th>
+                        @if(!$hasQrCol)
+                            <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($group['items'] as $index => $item)
                         <tr>
-                            <td class="col-no">{{ $index + 1 }}</td>
+                            @if(!$hasNoCol)
+                                <td class="col-no">{{ $index + 1 }}</td>
+                            @endif
                             @foreach($group['headers'] as $h)
-                                @if(!str_contains(strtolower($h), 'qr'))
+                                @php
+                                    $hLower = strtolower(trim($h));
+                                    $isQr = str_contains($hLower, 'qr');
+                                    $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
+                                    $val = $item->data[$h] ?? '-';
+                                @endphp
+
+                                @if($isQr)
+                                    <td class="col-qr" style="text-align: center; vertical-align: middle;">
+                                        @if(!empty($item->qr_base64))
+                                            <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
+                                        @else
+                                            <span style="font-size: 6pt; color: #64748b;">(QR)</span>
+                                        @endif
+                                    </td>
+                                @elseif($isNo)
+                                    <td class="col-no">{{ $val !== '' ? $val : ($index + 1) }}</td>
+                                @else
                                     <td>
-                                        @php
-                                            $val = $item->data[$h] ?? '-';
-                                        @endphp
                                         @if(is_bool($val))
                                             {{ $val ? 'Ya' : 'Tidak' }}
                                         @elseif(is_array($val))
                                             {{ json_encode($val) }}
+                                        @elseif(is_null($val) || $val === '')
+                                            <span style="color: #94a3b8;">-</span>
                                         @else
                                             @php $vLower = strtolower((string)$val); @endphp
                                             @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
@@ -426,19 +471,21 @@
                                             @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
                                                 <span class="badge-tms">{{ $val }}</span>
                                             @else
-                                                {{ $val !== '' ? $val : '-' }}
+                                                {{ $val }}
                                             @endif
                                         @endif
                                     </td>
                                 @endif
                             @endforeach
-                            <td class="col-qr">
-                                @if(!empty($item->qr_base64))
-                                    <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="45" height="45" style="display: block; margin: 0 auto;" />
-                                @else
-                                    -
-                                @endif
-                            </td>
+                            @if(!$hasQrCol)
+                                <td class="col-qr" style="text-align: center; vertical-align: middle;">
+                                    @if(!empty($item->qr_base64))
+                                        <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
+                                    @else
+                                        <span style="font-size: 6pt; color: #64748b;">(QR)</span>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>

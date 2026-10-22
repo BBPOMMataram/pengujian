@@ -260,8 +260,40 @@ class PengujianImport implements ToCollection, WithCalculatedFormulas, HasRefere
                 }
             }
 
-            // QR Code memuat isi dari data kolom di sebelahnya
-            $qrContent = $dataColumnValue ?: ('SMP-' . str_pad((string)$rowNum, 4, '0', STR_PAD_LEFT));
+            // Bangun isi QR Code yang rapi memuat Kode Sampel, Nama Produk, dan Jenis/Komoditi jika tersedia
+            $kodeVal = null;
+            $namaVal = null;
+            $jenisVal = null;
+            $paramVal = null;
+
+            foreach ($mappedData as $k => $v) {
+                if (str_contains(strtolower($k), 'qr') || $v === '' || $v === '-') continue;
+                $kL = strtolower($k);
+
+                if ($kodeVal === null && (str_contains($kL, 'kode') || str_contains($kL, 'code') || $kL === 'no sampel' || $kL === 'no. sampel')) {
+                    $kodeVal = $v;
+                } elseif ($namaVal === null && (str_contains($kL, 'nama') || str_contains($kL, 'produk') || str_contains($kL, 'sampel') || str_contains($kL, 'barang') || str_contains($kL, 'item'))) {
+                    $namaVal = $v;
+                } elseif ($jenisVal === null && (str_contains($kL, 'jenis') || str_contains($kL, 'komoditi') || str_contains($kL, 'kategori') || str_contains($kL, 'sediaan'))) {
+                    $jenisVal = $v;
+                } elseif ($paramVal === null && (str_contains($kL, 'parameter') || str_contains($kL, 'uji') || str_contains($kL, 'metode'))) {
+                    $paramVal = $v;
+                }
+            }
+
+            // Jika ada beberapa atribut penting (multi-kolom), susun baris per baris yang rapi
+            $qrLines = [];
+            if ($kodeVal) $qrLines[] = "Kode Sampel: " . $kodeVal;
+            if ($namaVal) $qrLines[] = "Nama Produk: " . $namaVal;
+            if ($jenisVal) $qrLines[] = "Jenis / Komoditi: " . $jenisVal;
+            if ($paramVal && count($qrLines) < 4) $qrLines[] = "Parameter: " . $paramVal;
+
+            if (!empty($qrLines)) {
+                $qrContent = implode("\n", $qrLines);
+            } else {
+                // Untuk format minimal 2-kolom (1 kolom data & 1 kolom kosong)
+                $qrContent = $dataColumnValue ?: ('SMP-' . str_pad((string)$rowNum, 4, '0', STR_PAD_LEFT));
+            }
 
             $records[] = [
                 'batch_id' => $this->batchId,

@@ -269,6 +269,33 @@ class PdfImportService
                 $mappedData['Keterangan Sampling'] = $data['keterangan_sampling'];
             }
 
+            // Susun isi QR Code yang rapi memuat Kode Sampel, Nama Produk, dan Jenis/Komoditi
+            $qrLines = [];
+            $qrLines[] = "Kode Sampel: " . $code;
+            if (!empty($data['nama_produk']) && $data['nama_produk'] !== '-') {
+                $qrLines[] = "Nama Produk: " . $data['nama_produk'];
+            }
+            if (!empty($data['komoditi']) && $data['komoditi'] !== '-') {
+                $qrLines[] = "Jenis / Komoditi: " . $data['komoditi'];
+            }
+            if (!empty($data['bentuk_sediaan']) && $data['bentuk_sediaan'] !== '-') {
+                $qrLines[] = "Bentuk Sediaan: " . $data['bentuk_sediaan'];
+            }
+            if (!empty($data['netto']) && $data['netto'] !== '-') {
+                $qrLines[] = "Netto: " . $data['netto'];
+            }
+            if (!empty($data['tempat_sampling'])) {
+                $qrLines[] = "Tempat Sampling: " . $data['tempat_sampling'];
+            }
+            if (!empty($data['pengirim'])) {
+                $qrLines[] = "Pengirim: " . $data['pengirim'];
+            }
+            if (!empty($data['no_surat'])) {
+                $qrLines[] = "No Surat: " . $data['no_surat'];
+            }
+
+            $qrContent = implode("\n", $qrLines);
+
             $records[] = [
                 'batch_id' => $batchId,
                 'file_group_id' => $batchId,
@@ -276,7 +303,7 @@ class PdfImportService
                 'sheet_name' => 'Dokumen SPU',
                 'row_number' => $rowNum++,
                 'qr_token' => Str::random(32),
-                'qr_content' => $code, // QR Code berisi Kode Sampel BBPOM
+                'qr_content' => $qrContent,
                 'data' => json_encode($mappedData),
                 'created_at' => $now,
                 'updated_at' => $now,

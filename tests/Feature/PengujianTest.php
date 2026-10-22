@@ -14,7 +14,7 @@ class PengujianTest extends TestCase
     {
         $response = $this->get('/');
         $response->assertStatus(200);
-        $response->assertSee('Laboratorium Pengujian BPOM Mataram');
+        $response->assertSee('Laboratorium Pengujian BBPOM di Mataram');
     }
 
     public function test_load_sample_data_creates_items()
@@ -22,11 +22,22 @@ class PengujianTest extends TestCase
         $response = $this->post('/load-sample');
         $response->assertRedirect();
 
-        $this->assertDatabaseCount('pengujian_items', 5);
+        $this->assertDatabaseCount('pengujian_items', 8);
 
         $item = PengujianItem::first();
         $this->assertNotNull($item->qr_token);
         $this->assertNotEmpty($item->data);
+    }
+
+    public function test_load_sample_pdf_creates_items()
+    {
+        $response = $this->post('/load-sample-pdf');
+        $response->assertRedirect();
+
+        $item = PengujianItem::first();
+        $this->assertNotNull($item->qr_token);
+        $this->assertNotEmpty($item->data);
+        $this->assertStringContainsString('Kode Sampel:', $item->qr_content);
     }
 
     public function test_index_displays_table_with_qr_code_column()
@@ -35,9 +46,9 @@ class PengujianTest extends TestCase
 
         $response = $this->get('/');
         $response->assertStatus(200);
-        $response->assertSee('QR Code & Aksi', false);
-        $response->assertSee('Lihat QR');
-        $response->assertSee('Buka PDF');
+        $response->assertSee('QR Code Ter-generate', false);
+        $response->assertSee('Pop-up QR');
+        $response->assertSee('Export PDF');
     }
 
     public function test_dompdf_generation_works()

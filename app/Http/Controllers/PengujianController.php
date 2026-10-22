@@ -306,6 +306,18 @@ class PengujianController extends Controller
 
         $now = now();
         foreach ($samples as $index => $data) {
+            $qrLines = [
+                "Kode Sampel: " . $data['Kode Sampel'],
+                "Nama Produk: " . $data['Nama Produk / Sampel'],
+                "Jenis / Komoditi: " . $data['Komoditi'],
+                "Bentuk Sediaan: " . $data['Bentuk Sediaan'],
+                "Netto: " . $data['Netto'],
+                "Tempat Sampling: " . $data['Tempat Sampling'],
+                "Pengirim: " . $data['Pengirim'],
+                "No Surat: " . $data['No Surat Petugas Sampling'],
+            ];
+            $qrContent = implode("\n", $qrLines);
+
             PengujianItem::create([
                 'batch_id' => $batchId,
                 'file_group_id' => $batchId,
@@ -313,7 +325,7 @@ class PengujianController extends Controller
                 'sheet_name' => 'Dokumen SPU',
                 'row_number' => $index + 1,
                 'qr_token' => Str::random(32),
-                'qr_content' => $data['Kode Sampel'],
+                'qr_content' => $qrContent,
                 'data' => $data,
                 'created_at' => $now,
                 'updated_at' => $now,
