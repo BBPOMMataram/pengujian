@@ -12,6 +12,13 @@ class PdfImportService
 
     public function __construct()
     {
+        if (!class_exists(\Smalot\PdfParser\Parser::class)) {
+            $fallbackFile = app_path('Support/PdfParser/Parser.php');
+            if (file_exists($fallbackFile)) {
+                require_once $fallbackFile;
+            }
+        }
+
         $this->parser = new Parser();
     }
 
