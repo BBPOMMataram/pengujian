@@ -28,17 +28,14 @@ jobs:
             REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git"
 
             # Check candidate directories matching exact cPanel path: "home/pengujian.bbpommataram.id/PENGUJIAN"
-            CANDIDATE_PATHS=(
-                "$HOME/pengujian.bbpommataram.id/PENGUJIAN"
-                "/home/pengujian.bbpommataram.id/PENGUJIAN"
-                "$HOME/pengujian.bbpommataram.id"
-                "$HOME/PENGUJIAN"
-                "/home/bbpommataram.id/pengujian.bbpommataram.id/PENGUJIAN"
-                "/home/bbpommataram.id/PENGUJIAN"
-            )
-
             APP_DIR=""
-            for p in "${CANDIDATE_PATHS[@]}"; do
+            for p in \
+                "$HOME/pengujian.bbpommataram.id/PENGUJIAN" \
+                "/home/pengujian.bbpommataram.id/PENGUJIAN" \
+                "$HOME/pengujian.bbpommataram.id" \
+                "$HOME/PENGUJIAN" \
+                "/home/bbpommataram.id/pengujian.bbpommataram.id/PENGUJIAN" \
+                "/home/bbpommataram.id/PENGUJIAN"; do
                 if [ -d "$p" ]; then
                     APP_DIR="$p"
                     echo "[Deploy] Found existing app directory: $APP_DIR"
@@ -159,7 +156,7 @@ jobs:
             for other in "$HOME/pengujian.bbpommataram.id" "$HOME/PENGUJIAN" "$HOME/pengujian.bbpommataram.id/PENGUJIAN" "/home/bbpom9725/pengujian.bbpommataram.id"; do
                 if [ -d "$other" ] && [ "$other" != "$APP_DIR" ]; then
                     echo "[Deploy] Syncing code to secondary directory: $other..."
-                    cp -ru resources app routes "$other/" 2>/dev/null || true
+                    cp -r resources app routes "$other/" 2>/dev/null || true
                     rm -f "$other/storage/framework/views/"*.php 2>/dev/null || true
                     touch "$other/public/index.php" 2>/dev/null || true
                     touch "$other/public/.lsphp_restart" 2>/dev/null || true
