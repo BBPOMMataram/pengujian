@@ -12,7 +12,9 @@ class PengujianItem extends Model
 
     protected $fillable = [
         'batch_id',
+        'file_group_id',
         'filename',
+        'sheet_name',
         'row_number',
         'qr_token',
         'qr_content',

@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Exports\SamplePengujianExport;
 use App\Exports\SampleTwoColumnExport;
 use App\Imports\PengujianImport;
+use App\Imports\PengujianMultipleSheetsImport;
 use App\Models\PengujianItem;
 use Barryvdh\DomPDF\Facade\Pdf;
 use FPDF;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class PengujianController extends Controller
@@ -20,10 +22,10 @@ class PengujianController extends Controller
      */
     public function index(Request $request)
     {
-        // Get list of distinct batches grouped strictly by batch_id and filename
-        $batches = PengujianItem::select('batch_id', 'filename')
+        // Get list of distinct batches grouped strictly by batch_id, file_group_id, filename, sheet_name
+        $batches = PengujianItem::select('batch_id', 'file_group_id', 'filename', 'sheet_name')
             ->selectRaw('MIN(created_at) as created_at, count(*) as total_items')
-            ->groupBy('batch_id', 'filename')
+            ->groupBy('batch_id', 'file_group_id', 'filename', 'sheet_name')
             ->orderByDesc('created_at')
             ->get();
 
@@ -75,18 +77,25 @@ class PengujianController extends Controller
 
         $currentBatch = $batches->firstWhere('batch_id', $selectedBatchId);
 
+        // Find sibling sheets if this file had multiple tabs
+        $siblingSheets = collect();
+        if ($currentBatch && $currentBatch->file_group_id) {
+            $siblingSheets = $batches->where('file_group_id', $currentBatch->file_group_id);
+        }
+
         return view('pengujian.index', [
             'items' => $items,
             'batches' => $batches,
             'selectedBatchId' => $selectedBatchId,
             'currentBatch' => $currentBatch,
+            'siblingSheets' => $siblingSheets,
             'headers' => $headers,
             'totalOverall' => PengujianItem::count(),
         ]);
     }
 
     /**
-     * Handle Excel upload using Maatwebsite\Excel.
+     * Handle Excel / CSV upload with multi-sheet detection and trailing empty row trimming.
      */
     public function upload(Request $request)
     {
@@ -100,15 +109,40 @@ class PengujianController extends Controller
 
         $file = $request->file('excel_file');
         $originalFilename = $file->getClientOriginalName();
-        $batchId = 'BATCH-' . date('Ymd-His') . '-' . Str::random(4);
+        $fileGroupId = 'FILE-' . date('Ymd-His') . '-' . Str::random(4);
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        // Check for multiple sheets in Excel files
+        $sheetNames = ['Worksheet'];
+        if (in_array($extension, ['xlsx', 'xls'])) {
+            try {
+                $reader = IOFactory::createReaderForFile($file->getRealPath());
+                $sheetNames = $reader->listWorksheetNames($file->getRealPath());
+            } catch (\Throwable $e) {
+                $sheetNames = ['Worksheet'];
+            }
+        }
 
         try {
-            Excel::import(new PengujianImport($batchId, $originalFilename), $file);
+            if (count($sheetNames) > 1) {
+                // Multi-tab Excel file: import each tab separately
+                Excel::import(new PengujianMultipleSheetsImport($fileGroupId, $originalFilename, $sheetNames), $file);
+                
+                $firstSheetBatch = $fileGroupId . '__' . Str::slug($sheetNames[0]);
+                $count = PengujianItem::where('file_group_id', $fileGroupId)->count();
 
-            $count = PengujianItem::where('batch_id', $batchId)->count();
+                return redirect()->route('pengujian.index', ['batch' => $firstSheetBatch])
+                    ->with('success', "File \"{$originalFilename}\" berhasil diimpor! Terdeteksi " . count($sheetNames) . " Tab/Sheet terpisah (Total {$count} baris data). Anda dapat beralih antar tab atau mengunduh laporan gabungan.");
+            } else {
+                // Single tab Excel or CSV file
+                $sheetName = $sheetNames[0] ?? 'Sheet1';
+                Excel::import(new PengujianImport($fileGroupId, $originalFilename, $sheetName, $fileGroupId), $file);
 
-            return redirect()->route('pengujian.index', ['batch' => $batchId])
-                ->with('success', "File \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil dimuat & QR Code ter-generate otomatis.");
+                $count = PengujianItem::where('batch_id', $fileGroupId)->count();
+
+                return redirect()->route('pengujian.index', ['batch' => $fileGroupId])
+                    ->with('success', "File \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil dimuat & QR Code ter-generate otomatis.");
+            }
         } catch (\Throwable $e) {
             return redirect()->back()
                 ->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
@@ -161,7 +195,9 @@ class PengujianController extends Controller
 
             PengujianItem::create([
                 'batch_id' => $batchId,
+                'file_group_id' => $batchId,
                 'filename' => $filename,
+                'sheet_name' => 'Data Sampel 2-Kolom',
                 'row_number' => $index + 1,
                 'qr_token' => Str::random(32),
                 'qr_content' => $dataVal,
@@ -198,7 +234,9 @@ class PengujianController extends Controller
 
             PengujianItem::create([
                 'batch_id' => $batchId,
+                'file_group_id' => $batchId,
                 'filename' => $filename,
+                'sheet_name' => 'Uji Laboratorium',
                 'row_number' => $index + 1,
                 'qr_token' => Str::random(32),
                 'qr_content' => $primaryVal . ' - ' . ($data['nama_sampel'] ?? ''),
@@ -247,7 +285,7 @@ class PengujianController extends Controller
     }
 
     /**
-     * Helper to render DomPDF view.
+     * Helper to render single item DomPDF view.
      */
     protected function generateDomPdf(PengujianItem $item, string $disposition = 'inline')
     {
@@ -274,9 +312,11 @@ class PengujianController extends Controller
     }
 
     /**
-     * Generate Batch PDF (all items in a batch) using DomPDF.
+     * Generate Tabular Batch PDF (All items in a single sheet / batch).
+     * Automatically adjusts orientation (Landscape if > 5 columns, Portrait if <= 5 columns)
+     * and scales typography so the table never swells or overflows.
      */
-    public function pdfBatch(string $batchId)
+    public function pdfBatch(Request $request, string $batchId)
     {
         $items = PengujianItem::where('batch_id', $batchId)->orderBy('row_number', 'asc')->get();
 
@@ -284,22 +324,144 @@ class PengujianController extends Controller
             return redirect()->back()->with('error', 'Batch data tidak ditemukan.');
         }
 
+        // Collect distinct headers from this batch
+        $headers = [];
         foreach ($items as $item) {
             $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
-            $qrSvg = QrCode::size(120)->margin(1)->generate($contentToEncode);
+            $qrSvg = QrCode::size(100)->margin(1)->generate($contentToEncode);
             $item->qr_base64 = base64_encode($qrSvg);
+
+            if (is_array($item->data)) {
+                foreach (array_keys($item->data) as $h) {
+                    if (!in_array($h, $headers)) {
+                        $headers[] = $h;
+                    }
+                }
+            }
         }
+
+        $colCount = count($headers);
+
+        // Allow explicit override via ?orientation=portrait or ?orientation=landscape
+        $requestedOrientation = strtolower($request->query('orientation', ''));
+        if (in_array($requestedOrientation, ['portrait', 'landscape'])) {
+            $orientation = $requestedOrientation;
+        } else {
+            // Auto switch: Landscape if > 5 columns, Portrait if <= 5 columns
+            $orientation = ($colCount > 5) ? 'landscape' : 'portrait';
+        }
+
+        // Auto font scaling to ensure table does not swell or overflow
+        if ($colCount <= 4) {
+            $fontSize = '8.5pt';
+            $headerFontSize = '8pt';
+        } elseif ($colCount <= 7) {
+            $fontSize = '7.5pt';
+            $headerFontSize = '7.5pt';
+        } elseif ($colCount <= 10) {
+            $fontSize = '7pt';
+            $headerFontSize = '7pt';
+        } else {
+            $fontSize = '6.5pt';
+            $headerFontSize = '6.5pt';
+        }
+
+        $firstItem = $items->first();
 
         $pdf = Pdf::loadView('pdf.batch-pengujian', [
             'items' => $items,
+            'headers' => $headers,
+            'orientation' => $orientation,
+            'fontSize' => $fontSize,
+            'headerFontSize' => $headerFontSize,
             'batchId' => $batchId,
-            'filename' => $items->first()->filename ?: 'Batch Pengujian',
+            'filename' => $firstItem->filename ?: 'Batch Pengujian',
+            'sheetName' => $firstItem->sheet_name ?: 'Data Pengujian',
             'printedAt' => now()->format('d/m/Y H:i'),
         ]);
 
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4', $orientation);
 
-        return $pdf->stream('LHP-Batch-' . Str::slug($batchId) . '.pdf');
+        return $pdf->stream('Laporan-Pengujian-' . Str::slug($firstItem->filename ?: $batchId) . '-' . $orientation . '.pdf');
+    }
+
+    /**
+     * Generate Merged PDF combining all tabs / sheets from the same uploaded Excel file.
+     */
+    public function pdfMergedFileGroup(Request $request, string $fileGroupId)
+    {
+        $allItems = PengujianItem::where('file_group_id', $fileGroupId)
+            ->orWhere('batch_id', $fileGroupId)
+            ->orderBy('batch_id', 'asc')
+            ->orderBy('row_number', 'asc')
+            ->get();
+
+        if ($allItems->isEmpty()) {
+            return redirect()->back()->with('error', 'File data pengujian tidak ditemukan.');
+        }
+
+        // Group items by batch_id / sheet_name
+        $grouped = $allItems->groupBy('batch_id');
+        $sheetGroups = [];
+        $maxColsOverall = 0;
+
+        foreach ($grouped as $batchId => $groupItems) {
+            $headers = [];
+            foreach ($groupItems as $item) {
+                $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
+                $qrSvg = QrCode::size(90)->margin(1)->generate($contentToEncode);
+                $item->qr_base64 = base64_encode($qrSvg);
+
+                if (is_array($item->data)) {
+                    foreach (array_keys($item->data) as $h) {
+                        if (!in_array($h, $headers)) {
+                            $headers[] = $h;
+                        }
+                    }
+                }
+            }
+
+            if (count($headers) > $maxColsOverall) {
+                $maxColsOverall = count($headers);
+            }
+
+            $firstInGroup = $groupItems->first();
+            $sheetGroups[] = [
+                'batch_id' => $batchId,
+                'sheet_name' => $firstInGroup->sheet_name ?: 'Data Pengujian',
+                'headers' => $headers,
+                'items' => $groupItems,
+            ];
+        }
+
+        $orientation = ($maxColsOverall > 5) ? 'landscape' : 'portrait';
+
+        if ($maxColsOverall <= 4) {
+            $fontSize = '8.5pt';
+            $headerFontSize = '8pt';
+        } elseif ($maxColsOverall <= 7) {
+            $fontSize = '7.5pt';
+            $headerFontSize = '7.5pt';
+        } else {
+            $fontSize = '7pt';
+            $headerFontSize = '6.5pt';
+        }
+
+        $filename = $allItems->first()->filename ?: 'Laporan_Gabungan';
+
+        $pdf = Pdf::loadView('pdf.merged-workbook', [
+            'sheetGroups' => $sheetGroups,
+            'totalItems' => $allItems->count(),
+            'filename' => $filename,
+            'orientation' => $orientation,
+            'fontSize' => $fontSize,
+            'headerFontSize' => $headerFontSize,
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ]);
+
+        $pdf->setPaper('A4', $orientation);
+
+        return $pdf->stream('Laporan-Gabungan-Semua-Tab-' . Str::slug($filename) . '.pdf');
     }
 
     /**

@@ -199,51 +199,90 @@
 
         <!-- SECTION 2: BATCH SELECTION & FILTER -->
         @if($batches->isNotEmpty())
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pilih Batch:</span>
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        @foreach($batches as $b)
-                            <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
-                               class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
-                                {{ $b->filename ?: $b->batch_id }} ({{ $b->total_items }} data)
+            <div class="space-y-3">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pilih File/Batch:</span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            @foreach($batches as $b)
+                                <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
+                                   class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
+                                    {{ $b->filename ?: $b->batch_id }} 
+                                    @if(!empty($b->sheet_name) && $b->sheet_name !== 'Sheet1')
+                                        <span class="opacity-80">[{{ $b->sheet_name }}]</span>
+                                    @endif
+                                    ({{ $b->total_items }} data)
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Search and Batch Actions -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @if($selectedBatchId && $items->isNotEmpty())
+                            <!-- Export PDF Tabular (Otomatis Landscape/Portrait) -->
+                            <a href="{{ route('pengujian.batch.pdf', $selectedBatchId) }}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs"
+                               title="Unduh seluruh data baris dalam tab ini ke dokumen PDF (otomatis Landscape jika kolom banyak)">
+                                <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                                <span>Export PDF Tabular</span>
                             </a>
-                        @endforeach
+
+                            <form action="{{ route('pengujian.batch.destroy', $selectedBatchId) }}" method="POST" onsubmit="return confirm('Hapus file / batch ini?')" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition" title="Hapus Batch Ini">
+                                    <span class="material-symbols-outlined text-[15px]">delete</span>
+                                    <span>Hapus</span>
+                                </button>
+                            </form>
+                        @endif
+
+                        <form action="{{ route('pengujian.index') }}" method="GET" class="flex items-center gap-2">
+                            <input type="hidden" name="batch" value="{{ $selectedBatchId }}">
+                            <div class="relative">
+                                <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari data/informasi..." 
+                                       class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] w-48 sm:w-60">
+                                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
+                            </div>
+                            @if(request('q'))
+                                <a href="{{ route('pengujian.index', ['batch' => $selectedBatchId]) }}" class="text-xs text-rose-600 hover:underline">Reset</a>
+                            @endif
+                        </form>
                     </div>
                 </div>
 
-                <!-- Search and Batch Actions -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    @if($selectedBatchId && $items->isNotEmpty())
-                        <a href="{{ route('pengujian.batch.pdf', $selectedBatchId) }}" 
-                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs"
-                           title="Unduh seluruh data baris dalam batch ini ke satu dokumen PDF">
-                            <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-                            <span>Export Batch ke PDF</span>
-                        </a>
-
-                        <form action="{{ route('pengujian.batch.destroy', $selectedBatchId) }}" method="POST" onsubmit="return confirm('Hapus file / batch ini?')" class="inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition" title="Hapus Batch Ini">
-                                <span class="material-symbols-outlined text-[15px]">delete</span>
-                                <span>Hapus Batch</span>
-                            </button>
-                        </form>
-                    @endif
-
-                    <form action="{{ route('pengujian.index') }}" method="GET" class="flex items-center gap-2">
-                        <input type="hidden" name="batch" value="{{ $selectedBatchId }}">
-                        <div class="relative">
-                            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari data/informasi..." 
-                                   class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] w-48 sm:w-60">
-                            <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
+                <!-- SUB-BAR JIKA FILE MEMILIKI BEBERAPA TAB / SHEETS -->
+                @if($siblingSheets->count() > 1)
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/80 border border-blue-200 p-3 rounded-xl shadow-2xs">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-blue-900 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[17px] text-[#005baa]">tab</span>
+                                Tab Dalam File Ini:
+                            </span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                @foreach($siblingSheets as $sheet)
+                                    <a href="{{ route('pengujian.index', ['batch' => $sheet->batch_id]) }}" 
+                                       class="px-3 py-1 rounded-lg text-xs font-semibold border transition-all {{ $selectedBatchId === $sheet->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' }}">
+                                        {{ $sheet->sheet_name ?: 'Tab' }} ({{ $sheet->total_items }} data)
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
-                        @if(request('q'))
-                            <a href="{{ route('pengujian.index', ['batch' => $selectedBatchId]) }}" class="text-xs text-rose-600 hover:underline">Reset</a>
+
+                        <!-- Tombol Export PDF Gabungan Seluruh Tab -->
+                        @if($currentBatch && $currentBatch->file_group_id)
+                            <a href="{{ route('pengujian.filegroup.pdf', $currentBatch->file_group_id) }}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition shrink-0"
+                               title="Unduh satu laporan PDF gabungan yang menyatukan seluruh tab dari file ini">
+                                <span class="material-symbols-outlined text-[16px]">merge</span>
+                                <span>Export Gabungan (Semua Tab ke 1 PDF)</span>
+                            </a>
                         @endif
-                    </form>
-                </div>
+                    </div>
+                @endif
             </div>
         @endif
 
@@ -260,7 +299,11 @@
                     </h3>
                     @if($currentBatch)
                         <p class="text-xs text-slate-500 mt-0.5">
-                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong> &bull; Diunggah pada {{ \Carbon\Carbon::parse($currentBatch->created_at)->format('d/m/Y H:i') }} WITA
+                            File: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong>
+                            @if(!empty($currentBatch->sheet_name) && $currentBatch->sheet_name !== 'Sheet1')
+                                &bull; Tab: <span class="px-2 py-0.5 rounded-md bg-blue-100 text-[#005baa] font-bold">{{ $currentBatch->sheet_name }}</span>
+                            @endif
+                            &bull; Diunggah pada {{ \Carbon\Carbon::parse($currentBatch->created_at)->format('d/m/Y H:i') }} WITA
                         </p>
                     @endif
                 </div>

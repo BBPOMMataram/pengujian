@@ -128,23 +128,29 @@
         .data-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
             margin-bottom: 16px;
-            font-size: 9.5pt;
+            font-size: 9pt;
         }
         .data-table th {
             background-color: #03428e;
             color: #ffffff;
             font-weight: 600;
             text-align: left;
-            padding: 6px 10px;
+            padding: 6px 8px;
             border: 1px solid #03428e;
-            font-size: 9pt;
+            font-size: 8.5pt;
             text-transform: uppercase;
+            word-wrap: break-word;
+            word-break: break-all;
         }
         .data-table td {
-            padding: 6px 10px;
+            padding: 5px 8px;
             border: 1px solid #cbd5e1;
             vertical-align: top;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
         }
         .data-table tr:nth-child(even) td {
             background-color: #f8fafc;

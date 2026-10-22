@@ -21,10 +21,11 @@ Route::post('/load-sample-full', [PengujianController::class, 'loadSampleData'])
 Route::get('/scan/{qrToken}', [PengujianController::class, 'scan'])->name('pengujian.scan');
 Route::get('/qr/{qrToken}', [PengujianController::class, 'qrImage'])->name('pengujian.qr');
 
-// PDF Generation Routes (Per-Row & Batch)
+// PDF Generation Routes (Per-Row & Batch & Merged File Groups)
 Route::get('/item/{id}/pdf', [PengujianController::class, 'pdf'])->name('pengujian.pdf');
 Route::get('/item/{id}/pdf-fpdf', [PengujianController::class, 'pdfFpdf'])->name('pengujian.pdf.fpdf');
 Route::get('/batch/{batchId}/pdf-all', [PengujianController::class, 'pdfBatch'])->name('pengujian.batch.pdf');
+Route::get('/file-group/{fileGroupId}/pdf-merged', [PengujianController::class, 'pdfMergedFileGroup'])->name('pengujian.filegroup.pdf');
 
 // Data Cleanup
 Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy');

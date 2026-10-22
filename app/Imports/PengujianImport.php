@@ -11,11 +11,15 @@ class PengujianImport implements ToCollection
 {
     protected string $batchId;
     protected string $filename;
+    protected string $sheetName;
+    protected string $fileGroupId;
 
-    public function __construct(string $batchId, string $filename)
+    public function __construct(string $batchId, string $filename, ?string $sheetName = null, ?string $fileGroupId = null)
     {
         $this->batchId = $batchId;
         $this->filename = $filename;
+        $this->sheetName = $sheetName ?: 'Sheet1';
+        $this->fileGroupId = $fileGroupId ?: $batchId;
     }
 
     public function collection(Collection $rows)
@@ -158,12 +162,10 @@ class PengujianImport implements ToCollection
             $dataStartIndex = $startIndex;
         }
 
-        // 5. Ekstraksi baris data dan simpan ke database
-        $now = now();
-        $records = [];
-        $rowNum = 1;
-
-        for ($i = $dataStartIndex; $i < $totalRows; $i++) {
+        // 5. Potong baris kosong di akhir data (trailing empty rows elimination)
+        // Cari baris terakhir yang benar-benar memuat data dari arah bawah
+        $dataEndIndex = -1;
+        for ($i = $totalRows - 1; $i >= $dataStartIndex; $i--) {
             $cells = $cleanedRows[$i]['cells'];
             $filled = $cleanedRows[$i]['filled'];
 
@@ -171,12 +173,55 @@ class PengujianImport implements ToCollection
                 continue;
             }
 
-            // Lewati baris footer / tanda tangan / catatan di bawah tabel
             if ($this->isFooterRow($cells, $maxCols)) {
                 continue;
             }
 
-            // Lewati jika ada baris penomoran kolom yang terselip
+            if ($this->isColumnIndexRow($cells)) {
+                continue;
+            }
+
+            // Cek apakah semua sel hanya tanda strip / spasi
+            $allEmptyOrDashes = true;
+            foreach ($cells as $c) {
+                $cT = trim((string)$c);
+                if ($cT !== '' && $cT !== '-' && $cT !== '–') {
+                    $allEmptyOrDashes = false;
+                    break;
+                }
+            }
+            if ($allEmptyOrDashes) {
+                continue;
+            }
+
+            // Ditemukan baris data riil paling bawah
+            $dataEndIndex = $i;
+            break;
+        }
+
+        if ($dataEndIndex < $dataStartIndex) {
+            return; // Tidak ada data riil di sheet ini
+        }
+
+        // 6. Ekstraksi baris data dan simpan ke database (antara dataStartIndex sampai dataEndIndex saja)
+        $now = now();
+        $records = [];
+        $rowNum = 1;
+
+        for ($i = $dataStartIndex; $i <= $dataEndIndex; $i++) {
+            $cells = $cleanedRows[$i]['cells'];
+            $filled = $cleanedRows[$i]['filled'];
+
+            if ($filled === 0) {
+                continue;
+            }
+
+            // Lewati baris footer / tanda tangan jika masih ada di tengah
+            if ($this->isFooterRow($cells, $maxCols)) {
+                continue;
+            }
+
+            // Lewati jika ada baris penomoran kolom
             if ($this->isColumnIndexRow($cells)) {
                 continue;
             }
@@ -218,7 +263,9 @@ class PengujianImport implements ToCollection
 
             $records[] = [
                 'batch_id' => $this->batchId,
+                'file_group_id' => $this->fileGroupId,
                 'filename' => $this->filename,
+                'sheet_name' => $this->sheetName,
                 'row_number' => $rowNum++,
                 'qr_token' => Str::random(32),
                 'qr_content' => $qrContent,
