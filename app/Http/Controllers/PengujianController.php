@@ -107,16 +107,21 @@ class PengujianController extends Controller
             $totalOverall = 0;
         }
 
-        return view('pengujian.index', [
-            'items' => $items,
-            'batches' => $batches,
-            'selectedBatchId' => $selectedBatchId,
-            'currentBatch' => $currentBatch,
-            'siblingSheets' => $siblingSheets,
-            'headers' => $headers,
-            'totalOverall' => $totalOverall,
-            'dbError' => $dbError,
-        ]);
+        try {
+            return view('pengujian.index', [
+                'items' => $items,
+                'batches' => $batches,
+                'selectedBatchId' => $selectedBatchId,
+                'currentBatch' => $currentBatch,
+                'siblingSheets' => $siblingSheets,
+                'headers' => $headers,
+                'totalOverall' => $totalOverall,
+                'dbError' => $dbError,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Blade View Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response('<div style="font-family: sans-serif; padding: 24px; color: #b91c1c;"><h2>Kendala Tampilan (View Error)</h2><p>' . htmlspecialchars($e->getMessage()) . '</p><pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; color: #334155;">' . htmlspecialchars($e->getFile() . ':' . $e->getLine()) . "\n" . htmlspecialchars($e->getTraceAsString()) . '</pre></div>', 500);
+        }
     }
 
     /**
