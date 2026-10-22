@@ -22,12 +22,24 @@ class PengujianController extends Controller
      */
     public function index(Request $request)
     {
-        // Get list of distinct batches grouped strictly by batch_id, file_group_id, filename, sheet_name
-        $batches = PengujianItem::select('batch_id', 'file_group_id', 'filename', 'sheet_name')
-            ->selectRaw('MIN(created_at) as created_at, count(*) as total_items')
-            ->groupBy('batch_id', 'file_group_id', 'filename', 'sheet_name')
-            ->orderByDesc('created_at')
-            ->get();
+        $dbError = null;
+        try {
+            // Auto run migrations if pengujian_items table does not exist
+            if (!\Illuminate\Support\Facades\Schema::hasTable('pengujian_items')) {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            }
+
+            // Get list of distinct batches grouped strictly by batch_id, file_group_id, filename, sheet_name
+            $batches = PengujianItem::select('batch_id', 'file_group_id', 'filename', 'sheet_name')
+                ->selectRaw('MIN(created_at) as created_at, count(*) as total_items')
+                ->groupBy('batch_id', 'file_group_id', 'filename', 'sheet_name')
+                ->orderByDesc('created_at')
+                ->get();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('DB Index error: ' . $e->getMessage());
+            $dbError = $e->getMessage();
+            $batches = collect();
+        }
 
         $selectedBatchId = $request->query('batch');
 
@@ -47,7 +59,12 @@ class PengujianController extends Controller
             });
         }
 
-        $items = $itemsQuery->orderBy('row_number', 'asc')->get();
+        try {
+            $items = $itemsQuery->orderBy('row_number', 'asc')->get();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Items query error: ' . $e->getMessage());
+            $items = collect();
+        }
 
         // Prepare QR codes and headers for each item
         $headers = [];
@@ -83,6 +100,13 @@ class PengujianController extends Controller
             $siblingSheets = $batches->where('file_group_id', $currentBatch->file_group_id);
         }
 
+        $totalOverall = 0;
+        try {
+            $totalOverall = PengujianItem::count();
+        } catch (\Throwable $e) {
+            $totalOverall = 0;
+        }
+
         return view('pengujian.index', [
             'items' => $items,
             'batches' => $batches,
@@ -90,7 +114,8 @@ class PengujianController extends Controller
             'currentBatch' => $currentBatch,
             'siblingSheets' => $siblingSheets,
             'headers' => $headers,
-            'totalOverall' => PengujianItem::count(),
+            'totalOverall' => $totalOverall,
+            'dbError' => $dbError,
         ]);
     }
 

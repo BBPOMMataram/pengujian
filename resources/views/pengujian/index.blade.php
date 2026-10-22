@@ -138,6 +138,17 @@
             </div>
         @endif
 
+        @if(!empty($dbError))
+            <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-start gap-3 shadow-2xs">
+                <span class="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">warning</span>
+                <div class="flex-1">
+                    <strong class="font-bold">Pemberitahuan Status Database:</strong>
+                    <div class="text-xs font-mono mt-1 break-all">{{ $dbError }}</div>
+                    <div class="text-xs mt-1 text-amber-700">Database sedang disiapkan atau dimigrasi ulang secara otomatis. Silakan muat contoh atau unggah file.</div>
+                </div>
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm shadow-2xs">
                 <ul class="list-disc list-inside space-y-1">
