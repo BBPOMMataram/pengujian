@@ -25,17 +25,24 @@ jobs:
             echo "=== [Deploy] Target Directory Setup ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
 
-            APP_DIR="/home/pengujian.bbpommataram.id/PENGUJIAN"
             REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git"
 
-            # Pastikan direktori target ada
-            if ! mkdir -p "$APP_DIR" 2>/dev/null; then
-                if [ -d "/home/bbpommataram.id" ] && [ -w "/home/bbpommataram.id" ]; then
-                    APP_DIR="/home/bbpommataram.id/PENGUJIAN"
-                else
-                    APP_DIR="$HOME/PENGUJIAN"
-                fi
-                mkdir -p "$APP_DIR"
+            # Check exact cPanel path requested by user: home/pengujian.bbpommataram.id/PENGUJIAN
+            if [ -d "$HOME/pengujian.bbpommataram.id/PENGUJIAN" ]; then
+                APP_DIR="$HOME/pengujian.bbpommataram.id/PENGUJIAN"
+            elif [ -d "/home/bbpommataram.id/pengujian.bbpommataram.id/PENGUJIAN" ]; then
+                APP_DIR="/home/bbpommataram.id/pengujian.bbpommataram.id/PENGUJIAN"
+            elif [ -d "/home/pengujian.bbpommataram.id/PENGUJIAN" ]; then
+                APP_DIR="/home/pengujian.bbpommataram.id/PENGUJIAN"
+            elif [ -d "$HOME/pengujian.bbpommataram.id" ]; then
+                APP_DIR="$HOME/pengujian.bbpommataram.id/PENGUJIAN"
+                mkdir -p "$APP_DIR" 2>/dev/null || true
+            elif [ -d "/home/bbpommataram.id/PENGUJIAN" ]; then
+                APP_DIR="/home/bbpommataram.id/PENGUJIAN"
+            else
+                APP_DIR="$HOME/pengujian.bbpommataram.id/PENGUJIAN"
+                mkdir -p "$APP_DIR" 2>/dev/null || APP_DIR="$HOME/PENGUJIAN"
+                mkdir -p "$APP_DIR" 2>/dev/null || true
             fi
 
             echo "[Deploy] Using APP_DIR: $APP_DIR"
@@ -133,5 +140,17 @@ jobs:
 
             # Touch public/index.php to reload LiteSpeed / PHP-FPM opcache
             touch public/index.php 2>/dev/null || true
+
+            # Sinkronkan views & code ke direktori alternatif jika ada
+            if [ "$APP_DIR" != "/home/bbpommataram.id/PENGUJIAN" ] && [ -d "/home/bbpommataram.id/PENGUJIAN" ]; then
+                echo "[Deploy] Syncing code to /home/bbpommataram.id/PENGUJIAN..."
+                cp -r resources app routes /home/bbpommataram.id/PENGUJIAN/ 2>/dev/null || true
+                touch /home/bbpommataram.id/PENGUJIAN/public/index.php 2>/dev/null || true
+            fi
+            if [ "$APP_DIR" != "$HOME/pengujian.bbpommataram.id" ] && [ -d "$HOME/pengujian.bbpommataram.id" ]; then
+                echo "[Deploy] Syncing code to $HOME/pengujian.bbpommataram.id..."
+                cp -r resources app routes "$HOME/pengujian.bbpommataram.id/" 2>/dev/null || true
+                touch "$HOME/pengujian.bbpommataram.id/public/index.php" 2>/dev/null || true
+            fi
 
             echo "=== [Deploy] Successfully deployed to https://pengujian.bbpommataram.id ✅ ==="
