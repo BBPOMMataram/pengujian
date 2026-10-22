@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,12 +12,51 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('lokasi_sampel', function (Blueprint $table) {
-            $table->id();
-            $table->string('kode_lokasi')->unique();
-            $table->string('name');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('lokasi_sampel')) {
+            Schema::create('lokasi_sampel', function (Blueprint $table) {
+                $table->id();
+                $table->string('kode_lokasi')->unique();
+                $table->string('name');
+                $table->string('keterangan')->nullable();
+                $table->timestamps();
+            });
+        } elseif (!Schema::hasColumn('lokasi_sampel', 'keterangan')) {
+            Schema::table('lokasi_sampel', function (Blueprint $table) {
+                $table->string('keterangan')->nullable()->after('name');
+            });
+        }
+
+        // Seed master data default: Kimia, Mikro, Retensi
+        $defaults = [
+            [
+                'kode_lokasi' => 'K',
+                'name' => 'Lab Kimia',
+                'keterangan' => 'Laboratorium Pengujian Kimia',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'kode_lokasi' => 'M',
+                'name' => 'Lab Mikro',
+                'keterangan' => 'Laboratorium Pengujian Mikrobiologi',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'kode_lokasi' => 'R',
+                'name' => 'Retensi',
+                'keterangan' => 'Penyimpanan Sampel Retensi',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ];
+
+        foreach ($defaults as $item) {
+            DB::table('lokasi_sampel')->updateOrInsert(
+                ['kode_lokasi' => $item['kode_lokasi']],
+                ['name' => $item['name'], 'keterangan' => $item['keterangan'], 'updated_at' => now()]
+            );
+        }
     }
 
     /**

@@ -78,36 +78,62 @@ class PdfImportService
     }
 
     /**
-     * Parse and decode code like 'K1 M0 R1' from Catatan into human readable Lokasi Sampel:
+     * Parse and decode code like 'K1 M0 R1' STRICTLY from Catatan into human readable Lokasi Sampel:
      * K = Lab Kimia, M = Lab Mikro, R = Retensi.
+     * Uses master data from 'lokasi_sampel' table if available.
+     * If Catatan is empty or has no K/M/R code, returns '-'.
      */
-    public function parseLokasiSampel(?string $text): string
+    public function parseLokasiSampel(?string $catatan): string
     {
-        if (empty($text)) {
+        if (empty($catatan) || trim($catatan) === '-' || trim($catatan) === '') {
             return '-';
+        }
+
+        // Cache or load master names from master table lokasi_sampel
+        static $masterNames = null;
+        if ($masterNames === null) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('lokasi_sampel')) {
+                    $masterNames = \Illuminate\Support\Facades\DB::table('lokasi_sampel')
+                        ->pluck('name', 'kode_lokasi')
+                        ->toArray();
+                }
+            } catch (\Throwable $e) {
+                $masterNames = [];
+            }
+            if (empty($masterNames)) {
+                $masterNames = [
+                    'K' => 'Lab Kimia',
+                    'M' => 'Lab Mikro',
+                    'R' => 'Retensi',
+                ];
+            }
         }
 
         $parts = [];
         $found = false;
 
         // K = Kimia (e.g. K1 -> Lab Kimia 1 Sampel, K2 -> Lab Kimia 2 Sampel, K0 -> Lab Kimia 0 Sampel)
-        if (preg_match('/(?:^|[\s,;])K\s*[:=]?\s*(\d+)/i', $text, $km)) {
+        if (preg_match('/(?:^|[\s,;])K\s*[:=]?\s*(\d+)/i', $catatan, $km)) {
             $count = (int) $km[1];
-            $parts[] = "Lab Kimia {$count} Sampel";
+            $name = $masterNames['K'] ?? 'Lab Kimia';
+            $parts[] = "{$name} {$count} Sampel";
             $found = true;
         }
 
         // M = Mikro (e.g. M0 -> Lab Mikro 0 Sampel, M1 -> Lab Mikro 1 Sampel)
-        if (preg_match('/(?:^|[\s,;])M\s*[:=]?\s*(\d+)/i', $text, $mm)) {
+        if (preg_match('/(?:^|[\s,;])M\s*[:=]?\s*(\d+)/i', $catatan, $mm)) {
             $count = (int) $mm[1];
-            $parts[] = "Lab Mikro {$count} Sampel";
+            $name = $masterNames['M'] ?? 'Lab Mikro';
+            $parts[] = "{$name} {$count} Sampel";
             $found = true;
         }
 
         // R = Retensi (e.g. R1 -> Retensi 1 Sampel, R0 -> Retensi 0 Sampel)
-        if (preg_match('/(?:^|[\s,;])R\s*[:=]?\s*(\d+)/i', $text, $rm)) {
+        if (preg_match('/(?:^|[\s,;])R\s*[:=]?\s*(\d+)/i', $catatan, $rm)) {
             $count = (int) $rm[1];
-            $parts[] = "Retensi {$count} Sampel";
+            $name = $masterNames['R'] ?? 'Retensi';
+            $parts[] = "{$name} {$count} Sampel";
             $found = true;
         }
 
@@ -115,8 +141,8 @@ class PdfImportService
             return implode(', ', $parts);
         }
 
-        $trimmed = trim($text);
-        return $trimmed !== '' ? $trimmed : '-';
+        // If Catatan does not contain K/M/R codes, return '-'
+        return '-';
     }
 
     /**
