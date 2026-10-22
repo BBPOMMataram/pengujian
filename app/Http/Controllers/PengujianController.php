@@ -312,9 +312,10 @@ class PengujianController extends Controller
     }
 
     /**
-     * Generate Tabular Batch PDF (All items in a single sheet / batch).
-     * Automatically adjusts orientation (Landscape if > 5 columns, Portrait if <= 5 columns)
-     * and scales typography so the table never swells or overflows.
+     * Generate Tabular or Vertical Batch PDF (All items in a single sheet / batch).
+     * If headers (columns) > 15: switches automatically to Vertical Per-Row layout (Kolom A: Header, Kolom B: Data)
+     * exactly like the BBPOM official screenshot.
+     * If headers <= 15: renders as Tabular Grid (Landscape if > 5 columns, Portrait if <= 5 columns).
      */
     public function pdfBatch(Request $request, string $batchId)
     {
@@ -342,7 +343,37 @@ class PengujianController extends Controller
 
         $colCount = count($headers);
 
-        // Allow explicit override via ?orientation=portrait or ?orientation=landscape
+        // Check if layout requested explicitly, otherwise auto-switch:
+        // Jika kolom > 15 -> layout vertical per-baris (Kolom A: Header, Kolom B: Nilai Data)
+        // Jika kolom <= 15 -> layout tabular horizontal
+        $requestedLayout = strtolower($request->query('layout', ''));
+        if (in_array($requestedLayout, ['vertical', 'tabular'])) {
+            $layout = $requestedLayout;
+        } else {
+            $layout = ($colCount > 15) ? 'vertical' : 'tabular';
+        }
+
+        $firstItem = $items->first();
+        $filename = $firstItem->filename ?: 'Batch Pengujian';
+        $sheetName = $firstItem->sheet_name ?: 'Data Pengujian';
+
+        if ($layout === 'vertical') {
+            // FORMAT VERTICAL PER-BARIS: Kolom A = Parameter, Kolom B = Nilai Data (Sesuai Gambar Lampiran)
+            $pdf = Pdf::loadView('pdf.batch-vertical', [
+                'items' => $items,
+                'headers' => $headers,
+                'batchId' => $batchId,
+                'filename' => $filename,
+                'sheetName' => $sheetName,
+                'printedAt' => now()->format('d/m/Y H:i'),
+            ]);
+
+            $pdf->setPaper('A4', 'portrait');
+
+            return $pdf->stream('LHP-' . Str::slug($filename) . '-perbaris.pdf');
+        }
+
+        // FORMAT TABULAR GRID HORIZONTAL (Untuk kolom <= 15)
         $requestedOrientation = strtolower($request->query('orientation', ''));
         if (in_array($requestedOrientation, ['portrait', 'landscape'])) {
             $orientation = $requestedOrientation;
@@ -366,8 +397,6 @@ class PengujianController extends Controller
             $headerFontSize = '6.5pt';
         }
 
-        $firstItem = $items->first();
-
         $pdf = Pdf::loadView('pdf.batch-pengujian', [
             'items' => $items,
             'headers' => $headers,
@@ -375,14 +404,14 @@ class PengujianController extends Controller
             'fontSize' => $fontSize,
             'headerFontSize' => $headerFontSize,
             'batchId' => $batchId,
-            'filename' => $firstItem->filename ?: 'Batch Pengujian',
-            'sheetName' => $firstItem->sheet_name ?: 'Data Pengujian',
+            'filename' => $filename,
+            'sheetName' => $sheetName,
             'printedAt' => now()->format('d/m/Y H:i'),
         ]);
 
         $pdf->setPaper('A4', $orientation);
 
-        return $pdf->stream('Laporan-Pengujian-' . Str::slug($firstItem->filename ?: $batchId) . '-' . $orientation . '.pdf');
+        return $pdf->stream('LHP-' . Str::slug($filename) . '-tabular.pdf');
     }
 
     /**
@@ -421,9 +450,13 @@ class PengujianController extends Controller
                 }
             }
 
-            if (count($headers) > $maxColsOverall) {
-                $maxColsOverall = count($headers);
+            $groupColCount = count($headers);
+            if ($groupColCount > $maxColsOverall) {
+                $maxColsOverall = $groupColCount;
             }
+
+            // Jika sheet ini memiliki lebih dari 15 kolom, ubah ke layout vertical per-baris
+            $groupLayout = ($groupColCount > 15) ? 'vertical' : 'tabular';
 
             $firstInGroup = $groupItems->first();
             $sheetGroups[] = [
@@ -431,6 +464,7 @@ class PengujianController extends Controller
                 'sheet_name' => $firstInGroup->sheet_name ?: 'Data Pengujian',
                 'headers' => $headers,
                 'items' => $groupItems,
+                'layout' => $groupLayout,
             ];
         }
 

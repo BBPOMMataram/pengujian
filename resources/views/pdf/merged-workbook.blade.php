@@ -6,7 +6,7 @@
     <style>
         @page {
             size: A4 {{ $orientation ?? 'landscape' }};
-            margin: 10mm 8mm 12mm 8mm;
+            margin: 12mm 10mm 15mm 10mm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
@@ -108,7 +108,7 @@
             border-left: 4px solid #03428e;
             padding: 5px 8px;
             margin-top: 10px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             font-size: 9pt;
             font-weight: bold;
             color: #03428e;
@@ -166,6 +166,56 @@
             padding: 2px;
         }
 
+        /* VERTICAL PER-ROW DATA TABLE (UNTUK SHEET > 15 KOLOM) */
+        .verification-box {
+            border: 1px solid #bfdbfe;
+            background-color: #f0f7ff;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+        }
+        .verification-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .vertical-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 12px;
+            font-size: 7.5pt;
+        }
+        .vertical-data-table th {
+            background-color: #03428e;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: left;
+            padding: 4px 6px;
+            border: 1px solid #03428e;
+            text-transform: uppercase;
+        }
+        .vertical-data-table td {
+            padding: 3.5px 6px;
+            border: 1px solid #cbd5e1;
+            vertical-align: middle;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+        .vertical-data-table td.col-no {
+            width: 28px;
+            text-align: center;
+            font-family: monospace;
+            color: #64748b;
+        }
+        .vertical-data-table td.col-param {
+            width: 200px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .vertical-data-table tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+
         /* Status Pills */
         .badge-ms {
             display: inline-block;
@@ -186,7 +236,6 @@
             font-size: 6.5pt;
         }
 
-        /* Page break between sheets */
         .page-break {
             page-break-after: always;
         }
@@ -251,66 +300,150 @@
     @foreach($sheetGroups as $sIdx => $group)
         <div class="sheet-section-title">
             TAB {{ $sIdx + 1 }}: {{ strtoupper($group['sheet_name']) }} ({{ $group['items']->count() }} Sampel)
+            @if($group['layout'] === 'vertical')
+                <span style="font-size: 7.5pt; font-weight: normal; color: #475569;">&bull; Format: Detail Per-Baris ({{ count($group['headers']) }} Kolom)</span>
+            @endif
         </div>
 
-        <table class="tabular-table">
-            <thead>
-                <tr>
-                    <th class="col-no">No</th>
-                    @foreach($group['headers'] as $h)
-                        @if(!str_contains(strtolower($h), 'qr'))
-                            <th>
-                                @if(str_contains($h, ' - '))
-                                    @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
-                                    <span style="font-size: 6pt; opacity: 0.8; font-weight: normal;">{{ str_replace('_', ' ', $mainH) }}</span><br/>
-                                    <span>{{ str_replace('_', ' ', $subH) }}</span>
-                                @else
-                                    {{ str_replace('_', ' ', $h) }}
-                                @endif
-                            </th>
-                        @endif
-                    @endforeach
-                    <th class="col-qr">QR Code</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($group['items'] as $index => $item)
-                    <tr>
-                        <td class="col-no">{{ $index + 1 }}</td>
-                        @foreach($group['headers'] as $h)
-                            @if(!str_contains(strtolower($h), 'qr'))
-                                <td>
-                                    @php
-                                        $val = $item->data[$h] ?? '-';
-                                    @endphp
-                                    @if(is_bool($val))
-                                        {{ $val ? 'Ya' : 'Tidak' }}
-                                    @elseif(is_array($val))
-                                        {{ json_encode($val) }}
-                                    @else
-                                        @php $vLower = strtolower((string)$val); @endphp
-                                        @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
-                                            <span class="badge-ms">{{ $val }}</span>
-                                        @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
-                                            <span class="badge-tms">{{ $val }}</span>
-                                        @else
-                                            {{ $val !== '' ? $val : '-' }}
-                                        @endif
+        @if($group['layout'] === 'vertical')
+            <!-- JIKA KOLOM > 15: FORMAT VERTICAL PER BARIS DATA (PERSIS SEPERTI SCREENSHOT) -->
+            @foreach($group['items'] as $item)
+                <div style="margin-bottom: 12px; page-break-inside: avoid;">
+                    <div class="verification-box">
+                        <table class="verification-table">
+                            <tr>
+                                <td style="vertical-align: middle;">
+                                    <div style="font-size: 9.5pt; font-weight: bold; color: #03428e;">
+                                        {{ $item->display_title ?: 'Sampel Pengujian' }}
+                                    </div>
+                                    <div style="font-size: 7.5pt; color: #475569; margin-top: 2px;">
+                                        Baris: #{{ $item->row_number }} &bull; Tab: {{ $group['sheet_name'] }}
+                                    </div>
+                                    <div style="font-size: 7pt; color: #047857; margin-top: 2px;">
+                                        <strong>Isi QR Code:</strong> {{ $item->qr_content ?: ($item->code ?: '-') }}
+                                    </div>
+                                </td>
+                                <td style="width: 75px; text-align: right; vertical-align: middle;">
+                                    @if(!empty($item->qr_base64))
+                                        <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="55" height="55" style="display: inline-block;" />
                                     @endif
                                 </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <table class="vertical-data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 28px; text-align: center;">NO</th>
+                                <th style="width: 180px;">PARAMETER / KOLOM EXCEL</th>
+                                <th>NILAI PENGUJIAN / KETERANGAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $pIdx = 1; @endphp
+                            @foreach($group['headers'] as $h)
+                                <tr>
+                                    <td class="col-no">{{ $pIdx++ }}</td>
+                                    <td class="col-param">
+                                        @if(str_contains($h, ' - '))
+                                            @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
+                                            <span style="font-size: 6pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainH) }} &rsaquo;</span><br/>
+                                            <span>{{ str_replace('_', ' ', $subH) }}</span>
+                                        @else
+                                            {{ str_replace('_', ' ', $h) }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $isQrCol = str_contains(strtolower($h), 'qr');
+                                            $val = $item->data[$h] ?? '-';
+                                        @endphp
+                                        @if($isQrCol)
+                                            <span style="color: #64748b; font-style: italic;">(Otomatis Di-generate)</span>
+                                        @elseif(is_bool($val))
+                                            {{ $val ? 'Ya' : 'Tidak' }}
+                                        @elseif(is_array($val))
+                                            {{ json_encode($val) }}
+                                        @else
+                                            @php $vLower = strtolower((string)$val); @endphp
+                                            @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
+                                                <span class="badge-ms">{{ $val }}</span>
+                                            @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
+                                                <span class="badge-tms">{{ $val }}</span>
+                                            @else
+                                                {{ $val !== '' ? $val : '-' }}
+                                            @endif
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endforeach
+
+        @else
+            <!-- JIKA KOLOM <= 15: FORMAT TABULAR GRID HORIZONTAL BIASA -->
+            <table class="tabular-table">
+                <thead>
+                    <tr>
+                        <th class="col-no">No</th>
+                        @foreach($group['headers'] as $h)
+                            @if(!str_contains(strtolower($h), 'qr'))
+                                <th>
+                                    @if(str_contains($h, ' - '))
+                                        @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
+                                        <span style="font-size: 6pt; opacity: 0.8; font-weight: normal;">{{ str_replace('_', ' ', $mainH) }}</span><br/>
+                                        <span>{{ str_replace('_', ' ', $subH) }}</span>
+                                    @else
+                                        {{ str_replace('_', ' ', $h) }}
+                                    @endif
+                                </th>
                             @endif
                         @endforeach
-                        <td class="col-qr">
-                            @if(!empty($item->qr_base64))
-                                <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="45" height="45" style="display: block; margin: 0 auto;" />
-                            @else
-                                -
-                            @endif
-                        </td>
+                        <th class="col-qr">QR Code</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach($group['items'] as $index => $item)
+                        <tr>
+                            <td class="col-no">{{ $index + 1 }}</td>
+                            @foreach($group['headers'] as $h)
+                                @if(!str_contains(strtolower($h), 'qr'))
+                                    <td>
+                                        @php
+                                            $val = $item->data[$h] ?? '-';
+                                        @endphp
+                                        @if(is_bool($val))
+                                            {{ $val ? 'Ya' : 'Tidak' }}
+                                        @elseif(is_array($val))
+                                            {{ json_encode($val) }}
+                                        @else
+                                            @php $vLower = strtolower((string)$val); @endphp
+                                            @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
+                                                <span class="badge-ms">{{ $val }}</span>
+                                            @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
+                                                <span class="badge-tms">{{ $val }}</span>
+                                            @else
+                                                {{ $val !== '' ? $val : '-' }}
+                                            @endif
+                                        @endif
+                                    </td>
+                                @endif
+                            @endforeach
+                            <td class="col-qr">
+                                @if(!empty($item->qr_base64))
+                                    <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="45" height="45" style="display: block; margin: 0 auto;" />
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
 
         @if(!$loop->last)
             <div class="page-break"></div>

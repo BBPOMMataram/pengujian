@@ -1,0 +1,189 @@
+name: Deploy to server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Deploy to pengujian.bbpommataram.id
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: 56710
+
+          key: ${{ secrets.SSH_KEY }}
+          debug: true
+          script: |
+            echo "=== [Deploy] Detecting Siproval Path on Server ==="
+            echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
+
+            APP_DIR=""
+            for candidate in \
+                "/home/bbpommataram.id/SIPROVAL" \
+                "/home/bbpommataram.id/Siproval" \
+                "/home/bbpommataram.id/siproval" \
+                "/home/bbpommataram.id/siproval.bbpommataram.id" \
+                "/home/bbpommataram.id/public_html/siproval" \
+                "$HOME/siproval" \
+                "$HOME/SIPROVAL" \
+                "$HOME/Siproval" \
+                "$HOME/siproval.bbpommataram.id" \
+                "$HOME/public_html/siproval" \
+                "/var/www/siproval" \
+                "/var/www/html/siproval"; do
+                if [ -d "$candidate" ]; then
+                    APP_DIR="$candidate"
+                    echo "[Deploy] Found candidate directory: $APP_DIR"
+                    break
+                fi
+            done
+
+            if [ -z "$APP_DIR" ]; then
+                echo "[Deploy] Candidate paths not found. Searching entire server..."
+                FOUND=$(find /home /var/www -maxdepth 3 -iname "*siproval*" -type d 2>/dev/null | head -n 1)
+                if [ -n "$FOUND" ]; then
+                    APP_DIR="$FOUND"
+                    echo "[Deploy] Found via search: $APP_DIR"
+                else
+                    echo "[Deploy] Siproval directory not found on server. Diagnostics:"
+                    echo "--- /home listing ---"
+                    ls -la /home 2>/dev/null || true
+                    echo "--- $HOME listing ---"
+                    ls -la "$HOME" 2>/dev/null || true
+
+                    if [ -d "/home/bbpommataram.id" ] && [ -w "/home/bbpommataram.id" ]; then
+                        APP_DIR="/home/bbpommataram.id/SIPROVAL"
+                    else
+                        APP_DIR="$HOME/SIPROVAL"
+                    fi
+                    echo "[Deploy] Cloning repository into $APP_DIR..."
+                    git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/Siproval.git" "$APP_DIR" || exit 1
+                fi
+            fi
+
+            echo "[Deploy] Using target directory: $APP_DIR"
+            cd "$APP_DIR" || exit 1
+
+            echo "[Deploy] Register safe directory..."
+            git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
+            echo "[Deploy] Fetch latest code..."
+            git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/Siproval.git" main:refs/remotes/origin/main --force || exit 1
+            git reset --hard origin/main || exit 1
+
+            echo "[Deploy] Current commit: $(git rev-parse --short HEAD)"
+
+            echo "[Deploy] Syncing auth database credentials from AUTH-BPOM if present..."
+            AUTH_ENV="/home/bbpommataram.id/AUTH-BPOM/.env"
+            if [ -f "$AUTH_ENV" ]; then
+                echo "[Deploy] Found AUTH-BPOM .env, syncing credentials to SIPROVAL .env..."
+                AUTH_DB=$(grep '^DB_DATABASE=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+                AUTH_USER=$(grep '^DB_USERNAME=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+                AUTH_PASS=$(grep '^DB_PASSWORD=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+                AUTH_HOST=$(grep '^DB_HOST=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+                AUTH_PORT=$(grep '^DB_PORT=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+                AUTH_JWT=$(grep '^JWT_SECRET=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
+
+                for key in BBPO_AUTH_DB_HOST BBPO_AUTH_DB_PORT BBPO_AUTH_DB_DATABASE BBPO_AUTH_DB_USERNAME BBPO_AUTH_DB_PASSWORD JWT_SECRET; do
+                    if ! grep -q "^$key=" "$APP_DIR/.env" 2>/dev/null; then
+                        echo "$key=" >> "$APP_DIR/.env"
+                    fi
+                done
+
+                if [ -n "$AUTH_DB" ]; then
+                    sed -i "s|^BBPO_AUTH_DB_DATABASE=.*|BBPO_AUTH_DB_DATABASE=$AUTH_DB|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                if [ -n "$AUTH_USER" ]; then
+                    sed -i "s|^BBPO_AUTH_DB_USERNAME=.*|BBPO_AUTH_DB_USERNAME=$AUTH_USER|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                if [ -n "$AUTH_PASS" ]; then
+                    sed -i "s|^BBPO_AUTH_DB_PASSWORD=.*|BBPO_AUTH_DB_PASSWORD=$AUTH_PASS|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                if [ -n "$AUTH_HOST" ]; then
+                    sed -i "s|^BBPO_AUTH_DB_HOST=.*|BBPO_AUTH_DB_HOST=$AUTH_HOST|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                if [ -n "$AUTH_PORT" ]; then
+                    sed -i "s|^BBPO_AUTH_DB_PORT=.*|BBPO_AUTH_DB_PORT=$AUTH_PORT|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                if [ -n "$AUTH_JWT" ]; then
+                    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$AUTH_JWT|" "$APP_DIR/.env" 2>/dev/null || true
+                fi
+                echo "[Deploy] Successfully synced auth credentials from AUTH-BPOM to SIPROVAL."
+            fi
+
+            echo "[Deploy] Install dependencies..."
+            export COMPOSER_ALLOW_SUPERUSER=1
+            composer install --no-dev --prefer-dist --no-interaction --no-ansi || exit 1
+
+            echo "[Deploy] Run migrations..."
+            php artisan migrate --force || exit 1
+
+            echo "[Deploy] Run Siproval Google Sheet deploy seeder..."
+            php artisan db:seed --class=SiprovalGoogleSheetDeploySeeder --force || exit 1
+
+            echo "[Deploy] Clear caches..."
+            php artisan optimize:clear || exit 1
+
+            echo "[Deploy] Writing Google Sheets credentials.json..."
+            mkdir -p "$APP_DIR/storage/app"
+            cat << 'EOF' > "$APP_DIR/storage/app/credentials.json"
+            ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+            EOF
+
+            if [ -s "$APP_DIR/storage/app/credentials.json" ]; then
+                echo "[Deploy Check] storage/app/credentials.json: FOUND ✅"
+            else
+                echo "[Deploy Check] storage/app/credentials.json: EMPTY/MISSING ❌"
+            fi
+
+            echo "[Deploy] Testing database connections..."
+            php -r "
+            require __DIR__ . '/vendor/autoload.php';
+            \$app = require_once __DIR__ . '/bootstrap/app.php';
+            \$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class);
+            \$kernel->bootstrap();
+
+            try {
+                echo '[Deploy DB Test] Main DB: ' . DB::connection()->getDatabaseName() . PHP_EOL;
+            } catch (Throwable \$e) {
+                echo '[Deploy DB Test] Main DB Error: ' . \$e->getMessage() . PHP_EOL;
+            }
+
+            try {
+                \$authDb = DB::connection('bbpo_auth')->getDatabaseName();
+                \$katimCount = DB::connection('bbpo_auth')->table('katims')->count();
+                echo '[Deploy DB Test] bbpo_auth DB: ' . \$authDb . ' | katims count: ' . \$katimCount . PHP_EOL;
+            } catch (Throwable \$e) {
+                echo '[Deploy DB Test] bbpo_auth Error: ' . \$e->getMessage() . PHP_EOL;
+            }
+            " || true
+
+            echo "[Deploy] Fix permissions..."
+            # Set owner storage & cache
+            chown -R bbpom9725:bbpom9725 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+
+            # Folder = 755 (drwxr-xr-x)
+            find "$APP_DIR/storage" -type d -exec chmod 755 {} \; 2>/dev/null || true
+            find "$APP_DIR/bootstrap/cache" -type d -exec chmod 755 {} \; 2>/dev/null || true
+
+            # File = 644 (-rw-r--r--)
+            find "$APP_DIR/storage" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            find "$APP_DIR/bootstrap/cache" -type f -exec chmod 644 {} \; 2>/dev/null || true
+
+            # Khusus laravel.log pastikan bisa ditulis
+            touch "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
+            chown bbpom9725:bbpom9725 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
+            chmod 644 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
+
+            # Trigger LiteSpeed / opcache reload
+            touch "$APP_DIR/public/index.php" 2>/dev/null || true
+
+            echo "[Deploy] Done ✅"
