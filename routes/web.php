@@ -16,6 +16,7 @@ Route::get('/download-template-full', [PengujianController::class, 'downloadTemp
 Route::post('/load-sample', [PengujianController::class, 'loadSampleTwoColumn'])->name('pengujian.sample');
 Route::post('/load-sample-2col', [PengujianController::class, 'loadSampleTwoColumn'])->name('pengujian.sample.2col');
 Route::post('/load-sample-full', [PengujianController::class, 'loadSampleData'])->name('pengujian.sample.full');
+Route::post('/load-sample-pdf', [PengujianController::class, 'loadSamplePdfSpu'])->name('pengujian.sample.pdf');
 
 // Public Scan Endpoint
 Route::get('/scan/{qrToken}', [PengujianController::class, 'scan'])->name('pengujian.scan');

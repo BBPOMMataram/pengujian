@@ -95,22 +95,36 @@ class PengujianController extends Controller
     }
 
     /**
-     * Handle Excel / CSV upload with multi-sheet detection and trailing empty row trimming.
+     * Handle Excel / CSV / PDF upload with multi-sheet detection and trailing empty row trimming.
      */
     public function upload(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv,pdf|max:25600',
         ], [
-            'excel_file.required' => 'Silakan pilih file Excel atau CSV terlebih dahulu.',
-            'excel_file.mimes' => 'Format file harus berupa Excel (.xlsx, .xls) atau .csv.',
-            'excel_file.max' => 'Ukuran file maksimal 20 MB.',
+            'excel_file.required' => 'Silakan pilih file Excel, CSV, atau PDF terlebih dahulu.',
+            'excel_file.mimes' => 'Format file harus berupa Excel (.xlsx, .xls), .csv, atau .pdf.',
+            'excel_file.max' => 'Ukuran file maksimal 25 MB.',
         ]);
 
         $file = $request->file('excel_file');
         $originalFilename = $file->getClientOriginalName();
         $fileGroupId = 'FILE-' . date('Ymd-His') . '-' . Str::random(4);
         $extension = strtolower($file->getClientOriginalExtension());
+
+        // Handle PDF import
+        if ($extension === 'pdf') {
+            try {
+                $pdfService = new \App\Services\PdfImportService();
+                $count = $pdfService->import($file->getRealPath(), $fileGroupId, $originalFilename);
+
+                return redirect()->route('pengujian.index', ['batch' => $fileGroupId])
+                    ->with('success', "Dokumen PDF \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil diekstraksi ke tabel & QR Code ter-generate otomatis.");
+            } catch (\Throwable $e) {
+                return redirect()->back()
+                    ->with('error', 'Gagal memproses file PDF: ' . $e->getMessage());
+            }
+        }
 
         // Check for multiple sheets in Excel files
         $sheetNames = ['Worksheet'];
@@ -145,7 +159,7 @@ class PengujianController extends Controller
             }
         } catch (\Throwable $e) {
             return redirect()->back()
-                ->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
+                ->with('error', 'Gagal memproses file: ' . $e->getMessage());
         }
     }
 
@@ -247,6 +261,67 @@ class PengujianController extends Controller
 
         return redirect()->route('pengujian.index', ['batch' => $batchId])
             ->with('success', "Berhasil memuat {$count} data sampel contoh laboratorium BPOM dengan QR Code!");
+    }
+
+    /**
+     * Quick-load sample data: Format Dokumen SPU PDF BBPOM (Surat Permintaan Uji & Lampiran).
+     */
+    public function loadSamplePdfSpu()
+    {
+        $batchId = 'SAMPLE-SPU-PDF-' . date('Ymd-His');
+        $filename = 'Contoh_Surat_Permintaan_Uji_SPU.pdf';
+
+        $samples = [
+            [
+                'No' => '1',
+                'Kode Sampel' => '26.117.11.16.05.0712.K',
+                'QR Code' => '(Otomatis Di-generate)',
+                'Nama Produk / Sampel' => 'Kristal Putih Transparan diduga Shabu an Tsk ALFAN AHMADI Bin SAIPUDIN',
+                'Komoditi' => 'Narkotika',
+                'Bentuk Sediaan' => 'Solid',
+                'Netto' => '0,07 gram',
+                'Tempat Sampling' => 'Kepolisian Resort Lombok Timur',
+                'Pengirim' => 'MUH. BAGUS HARFIAN (01081068)',
+                'Tanggal Diterima' => '2026-10-20',
+                'No Surat Petugas Sampling' => 'B/1551/X/RES.4.2/2026',
+                'No Billing' => '820261020575208',
+                'Keterangan Sampling' => 'Plastik transparan bersegel yang dijahit benang warna merah dalam amplop coklat berlak segel barang bukti',
+            ],
+            [
+                'No' => '2',
+                'Kode Sampel' => '26.117.11.16.05.0713.K',
+                'QR Code' => '(Otomatis Di-generate)',
+                'Nama Produk / Sampel' => 'Kristal Putih Transparan diduga Shabu an Tsk ANDI GALIB Bin H. IMAM AS',
+                'Komoditi' => 'Narkotika',
+                'Bentuk Sediaan' => 'Solid',
+                'Netto' => '0,07 gram',
+                'Tempat Sampling' => 'Kepolisian Resort Lombok Timur',
+                'Pengirim' => 'MUH. BAGUS HARFIAN (01081068)',
+                'Tanggal Diterima' => '2026-10-20',
+                'No Surat Petugas Sampling' => 'B/1558/X/RES.4.2/2026',
+                'No Billing' => '820261020575296',
+                'Keterangan Sampling' => 'Plastik transparan bersegel yang dijahit benang warna merah dalam amplop coklat berlak segel barang bukti',
+            ]
+        ];
+
+        $now = now();
+        foreach ($samples as $index => $data) {
+            PengujianItem::create([
+                'batch_id' => $batchId,
+                'file_group_id' => $batchId,
+                'filename' => $filename,
+                'sheet_name' => 'Dokumen SPU',
+                'row_number' => $index + 1,
+                'qr_token' => Str::random(32),
+                'qr_content' => $data['Kode Sampel'],
+                'data' => $data,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        return redirect()->route('pengujian.index', ['batch' => $batchId])
+            ->with('success', "Berhasil memuat contoh tabel hasil ekstraksi Dokumen PDF Surat Permintaan Uji (SPU) BBPOM!");
     }
 
     /**

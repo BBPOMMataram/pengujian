@@ -95,6 +95,15 @@
                     </button>
                 </form>
 
+                <!-- Quick Load Sample PDF SPU -->
+                <form action="{{ route('pengujian.sample.pdf') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors shadow-2xs" title="Muat contoh ekstraksi dari Dokumen PDF Surat Permintaan Uji (SPU)">
+                        <span class="material-symbols-outlined text-[17px]">picture_as_pdf</span>
+                        <span>Contoh SPU (PDF)</span>
+                    </button>
+                </form>
+
                 @if($totalOverall > 0)
                     <form action="{{ route('pengujian.clear') }}" method="POST" onsubmit="return confirm('Yakin ingin mengosongkan semua data pengujian?')" class="inline">
                         @csrf
@@ -139,29 +148,29 @@
             </div>
         @endif
 
-        <!-- SECTION 1: UPLOAD EXCEL CARD (1 Kolom Data & 1 Kolom Kosong) -->
+        <!-- SECTION 1: UPLOAD CARD (Excel / CSV / PDF) -->
         <section class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div class="p-6 sm:p-7">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                             <span class="material-symbols-outlined text-[#005baa]">upload_file</span>
-                            Unggah File Data Pengujian (Excel / CSV)
+                            Unggah Dokumen Data Pengujian (Excel / CSV / PDF)
                         </h2>
                         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-                            Unggah file Excel berisi <strong>1 kolom data dan 1 kolom kosong</strong> (atau format multi-kolom). Sistem otomatis menghasilkan <strong>QR Code tepat di kolom sampingnya</strong> yang memuat informasi dari data tersebut.
+                            Unggah file <strong>Excel (.xlsx, .xls)</strong>, <strong>CSV</strong>, atau dokumen <strong>PDF (Surat Permintaan Uji / SPU)</strong>. Sistem otomatis mengekstrak seluruh data sampel ke dalam tabel dan menghasilkan <strong>QR Code tepat di kolom sampingnya</strong>.
                         </p>
                     </div>
                     <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 shrink-0">
                         <span class="material-symbols-outlined text-[#005baa] text-[18px]">info</span>
-                        <span>Mendukung: <strong>.xlsx, .xls, .csv</strong></span>
+                        <span>Mendukung: <strong>.xlsx, .xls, .csv, .pdf</strong></span>
                     </div>
                 </div>
 
                 <form action="{{ route('pengujian.upload') }}" method="POST" enctype="multipart/form-data" class="mt-5">
                     @csrf
                     <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-[#005baa] rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 group">
-                        <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls,.csv" class="hidden" required onchange="handleFileSelected(this)">
+                        <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls,.csv,.pdf" class="hidden" required onchange="handleFileSelected(this)">
                         
                         <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-100/70 text-[#005baa] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                             <span class="material-symbols-outlined text-3xl">cloud_upload</span>
@@ -169,10 +178,10 @@
 
                         <div id="file-label" class="space-y-1">
                             <p class="text-sm font-semibold text-slate-700">
-                                Klik untuk memilih file Excel atau seret &amp; letakkan ke sini
+                                Klik untuk memilih file Excel, CSV, atau Dokumen PDF atau seret &amp; letakkan ke sini
                             </p>
                             <p class="text-xs text-slate-400">
-                                Format: Kolom A berisi Data/Nama Sampel, Kolom B kosong (QR Code akan ter-generate otomatis)
+                                Mendukung Excel (1 kolom data &amp; 1 kolom kosong / multi-kolom) serta Dokumen PDF resmi BBPOM (Surat Permintaan Uji / SPU)
                             </p>
                         </div>
 
