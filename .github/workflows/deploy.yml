@@ -25,29 +25,7 @@ jobs:
             echo "=== [Deploy] Detecting Pengujian Path on Server ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
 
-            APP_DIR=""
-            for candidate in \
-                "/home/bbpommataram.id/pengujian.bbpommataram.id" \
-                "/home/bbpom9725/pengujian.bbpommataram.id" \
-                "/home/bbpommataram.id/public_html/pengujian" \
-                "/home/bbpom9725/public_html/pengujian" \
-                "/home/bbpommataram.id/pengujian" \
-                "/home/bbpom9725/pengujian" \
-                "/home/bbpommataram.id/PENGUJIAN" \
-                "/home/bbpom9725/PENGUJIAN" \
-                "$HOME/pengujian.bbpommataram.id" \
-                "$HOME/public_html/pengujian" \
-                "$HOME/pengujian" \
-                "$HOME/PENGUJIAN" \
-                "/var/www/pengujian.bbpommataram.id" \
-                "/var/www/pengujian" \
-                "/var/www/html/pengujian"; do
-                if [ -d "$candidate" ]; then
-                    APP_DIR="$candidate"
-                    echo "[Deploy] Found candidate directory: $APP_DIR"
-                    break
-                fi
-            done
+            APP_DIR="/home/bbpommataram.id/PENGUJIAN"
 
             if [ -z "$APP_DIR" ]; then
                 echo "[Deploy] Candidate paths not found. Searching server for pengujian directory..."
