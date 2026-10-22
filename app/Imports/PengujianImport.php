@@ -6,8 +6,10 @@ use App\Models\PengujianItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
+use Maatwebsite\Excel\Concerns\HasReferencesToOtherSheets;
 
-class PengujianImport implements ToCollection
+class PengujianImport implements ToCollection, WithCalculatedFormulas, HasReferencesToOtherSheets
 {
     protected string $batchId;
     protected string $filename;
@@ -322,7 +324,8 @@ class PengujianImport implements ToCollection
 
         // Indikator bentuk sediaan dan dosis obat yang menandakan DATA, bukan header
         $dataPatterns = [
-            '/\b(mg|ml|mcg|iu|ppm|gr|kg|g|l|tablet|tab|kaplet|kapsul|sirup|syr|suspensi|emulsi|salep|krim|cream|gel|lotion|tetes|drop|injeksi|inj|infus|vial|ampul|botol|blister|strip|sachet)\b/i',
+            '/\b\d+\s*(mg|ml|mcg|iu|ppm|gr|kg|g|l)\b/i',
+            '/\b(tablet|tab\.|kaplet|kapsul|sirup|syr|suspensi|emulsi|salep|krim|cream|gel|lotion|injeksi|inj|infus|vial|ampul)\b/i',
             '/\b(batch|bets)\s*[:#]?\s*[a-z0-9_-]+/i',
             '/\b(exp|ed)\s*[:#]?\s*\d{2}/i',
         ];
@@ -364,8 +367,8 @@ class PengujianImport implements ToCollection
 
         if ($textCells === 0) return false;
 
-        // Jika terdapat nama obat / dosis / satuan, ini adalah baris data
-        if ($dataIndicatorCount > 0) {
+        // Jika terdapat nama obat / dosis kuat dan tidak ada header keywords yang signifikan
+        if ($dataIndicatorCount > 0 && $matches < 2) {
             return false;
         }
 

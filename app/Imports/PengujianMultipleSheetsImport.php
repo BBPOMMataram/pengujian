@@ -4,8 +4,10 @@ namespace App\Imports;
 
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
+use Maatwebsite\Excel\Concerns\HasReferencesToOtherSheets;
 
-class PengujianMultipleSheetsImport implements WithMultipleSheets
+class PengujianMultipleSheetsImport implements WithMultipleSheets, WithCalculatedFormulas, HasReferencesToOtherSheets
 {
     protected string $fileGroupId;
     protected string $filename;
