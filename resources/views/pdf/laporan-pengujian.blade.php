@@ -255,8 +255,14 @@
                 @foreach($item->data as $key => $val)
                     <tr>
                         <td style="text-align: center; color: #64748b;">{{ $i++ }}</td>
-                        <td style="font-weight: 600; color: #334155; text-transform: capitalize;">
-                            {{ str_replace(['_', '-'], ' ', $key) }}
+                        <td style="font-weight: 600; color: #334155;">
+                            @if(str_contains($key, ' - '))
+                                @php [$mainK, $subK] = explode(' - ', $key, 2); @endphp
+                                <span style="font-size: 8pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainK) }} &rsaquo;</span><br/>
+                                <span style="font-size: 9.5pt; color: #0f172a; font-weight: bold;">{{ str_replace('_', ' ', $subK) }}</span>
+                            @else
+                                <span style="font-size: 9.5pt; text-transform: capitalize;">{{ str_replace('_', ' ', $key) }}</span>
+                            @endif
                         </td>
                         <td style="color: #0f172a;">
                             @if(is_bool($val))

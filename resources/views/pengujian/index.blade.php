@@ -307,7 +307,13 @@
                                 @foreach($headers as $h)
                                     @if(!str_contains(strtolower($h), 'qr'))
                                         <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-slate-800 min-w-[180px]">
-                                            {{ str_replace(['_', '-'], ' ', $h) }}
+                                            @if(str_contains($h, ' - '))
+                                                @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
+                                                <div class="text-[10px] text-slate-400 font-semibold normal-case tracking-normal">{{ str_replace('_', ' ', $mainH) }}</div>
+                                                <div class="text-xs font-bold text-slate-800">{{ str_replace('_', ' ', $subH) }}</div>
+                                            @else
+                                                {{ str_replace('_', ' ', $h) }}
+                                            @endif
                                         </th>
                                     @endif
                                 @endforeach
