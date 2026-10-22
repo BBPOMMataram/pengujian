@@ -87,7 +87,9 @@ jobs:
 
             # Set APP_ENV dan APP_DEBUG
             sed -i "s|^APP_ENV=.*|APP_ENV=production|" .env 2>/dev/null || true
-            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=true|" .env 2>/dev/null || true
+            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" .env 2>/dev/null || true
+            sed -i "s|^SESSION_DRIVER=.*|SESSION_DRIVER=file|" .env 2>/dev/null || true
+            sed -i "s|^CACHE_STORE=.*|CACHE_STORE=file|" .env 2>/dev/null || true
 
             # Buat folder framework yang dibutuhkan Laravel jika belum ada
             mkdir -p storage/framework/cache/data
@@ -100,6 +102,7 @@ jobs:
             # Pastikan file SQLite database ada
             if grep -q "^DB_CONNECTION=sqlite" .env || ! grep -q "^DB_CONNECTION=" .env; then
                 touch database/database.sqlite
+                chmod 666 database/database.sqlite 2>/dev/null || true
                 echo "[Deploy] SQLite database verified at $APP_DIR/database/database.sqlite"
             fi
 
@@ -116,11 +119,8 @@ jobs:
             echo "[Deploy] Running migrations..."
             php artisan migrate --force || exit 1
 
-            echo "[Deploy] Optimizing caches..."
+            echo "[Deploy] Clearing and optimizing caches..."
             php artisan optimize:clear || exit 1
-            php artisan config:cache || true
-            php artisan route:cache || true
-            php artisan view:cache || true
 
             echo "[Deploy] Linking storage..."
             php artisan storage:link 2>/dev/null || true
@@ -130,13 +130,13 @@ jobs:
             chown -R "$SERVER_USER:$SERVER_USER" storage bootstrap/cache database 2>/dev/null || true
 
             # Berikan hak akses penuh ke storage, cache, dan database SQLite
-            chmod -R 775 storage bootstrap/cache database 2>/dev/null || true
+            chmod -R 777 storage bootstrap/cache database 2>/dev/null || chmod -R 775 storage bootstrap/cache database 2>/dev/null || true
             if [ -f "database/database.sqlite" ]; then
-                chmod 664 database/database.sqlite 2>/dev/null || true
+                chmod 666 database/database.sqlite 2>/dev/null || true
             fi
 
             touch storage/logs/laravel.log 2>/dev/null || true
-            chmod 664 storage/logs/laravel.log 2>/dev/null || true
+            chmod 666 storage/logs/laravel.log 2>/dev/null || true
 
             # Touch public/index.php to reload LiteSpeed / PHP-FPM opcache
             touch public/index.php 2>/dev/null || true
