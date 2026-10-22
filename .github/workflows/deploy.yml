@@ -87,7 +87,7 @@ jobs:
 
             # Set APP_ENV dan APP_DEBUG
             sed -i "s|^APP_ENV=.*|APP_ENV=production|" .env 2>/dev/null || true
-            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" .env 2>/dev/null || true
+            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=true|" .env 2>/dev/null || true
 
             # Buat folder framework yang dibutuhkan Laravel jika belum ada
             mkdir -p storage/framework/cache/data
