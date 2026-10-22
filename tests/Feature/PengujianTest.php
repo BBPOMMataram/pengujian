@@ -169,5 +169,11 @@ class PengujianTest extends TestCase
         $this->assertStringContainsString('NIE: -', $item->qr_content);
         $this->assertStringContainsString('Jenis Sampel: Narkotika - Pihak Ke 3 - Kepolisian', $item->qr_content);
         $this->assertStringContainsString('Lokasi Sampel: Lab Kimia 1 Sampel, Lab Mikro 0 Sampel, Retensi 1 Sampel', $item->qr_content);
+
+        // Check sample 2 (Catatan: - -> Lokasi Sampel: -)
+        $item2 = PengujianItem::skip(1)->first();
+        $this->assertNotNull($item2);
+        $this->assertEquals('-', $item2->data['Lokasi Sampel']);
+        $this->assertStringContainsString('Lokasi Sampel: -', $item2->qr_content);
     }
 }

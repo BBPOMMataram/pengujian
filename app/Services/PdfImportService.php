@@ -233,13 +233,21 @@ class PdfImportService
                 }
 
                 // Ekstraksi Catatan dan konversi ke Lokasi Sampel (K = Lab Kimia, M = Lab Mikro, R = Retensi)
-                $catatan = '';
-                if (preg_match('/(?:NTPN[^\n]*\n\s*)([^\n]+)/i', $body, $cm)) {
-                    $catatan = trim($cm[1]);
-                } elseif (preg_match('/Catatan[:\s]*([^\n]+)/i', $body, $cm2)) {
-                    $catatan = trim($cm2[1]);
+                $catatan = '-';
+                if (preg_match('/\b([Kk]\s*\d+[\s,;]*[Mm]\s*\d+[\s,;]*[Rr]\s*\d+)\b/', $body, $kmr)) {
+                    $catatan = trim($kmr[1]);
+                } elseif (preg_match('/Catatan[:\s]*([^\n]+)/i', $body, $cm)) {
+                    $rawCat = trim($cm[1]);
+                    $catatan = ($rawCat !== '' && $rawCat !== '-' && !preg_match('/Evaluasi Penandaan/i', $rawCat)) ? $rawCat : '-';
+                } elseif (preg_match('/(?:NTPN[^\n]*\n\s*)([^\n]+)(?:\n\s*([^\n]+))?/i', $body, $cm)) {
+                    if (!empty($cm[2])) {
+                        $candidate = trim($cm[2]);
+                        if (!preg_match('/^(?:Kode Sampel|\d+Kode Sampel|Keterangan Jumlah)/i', $candidate)) {
+                            $catatan = $candidate;
+                        }
+                    }
                 }
-                $lokasiSampel = $this->parseLokasiSampel($catatan ?: $body);
+                $lokasiSampel = $this->parseLokasiSampel($catatan);
 
                 $keteranganSampling = '';
                 if (preg_match('/(Plastik|Kardus|Botol|Aluminium|Kemasan|Amplop|Klip)[^•\n]+(?:\n[ \t]*[^•\n]+)*/i', $body, $sm)) {
@@ -387,19 +395,12 @@ class PdfImportService
                 'Kode Sampel' => $code,
                 'QR Code' => '(Otomatis Di-generate)',
                 'Nama Produk / Sampel' => $data['nama_produk'] ?? '-',
-                'NIE' => $data['nie'] ?? '-',
+                'NIE' => (!empty($data['nie']) && $data['nie'] !== '') ? $data['nie'] : '-',
+                'Jenis Sampel' => !empty($data['jenis_sampel']) ? $data['jenis_sampel'] : (!empty($data['komoditi']) ? $data['komoditi'] : '-'),
+                'Komoditi' => $data['komoditi'] ?? 'Narkotika',
+                'Lokasi Sampel' => (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '') ? $data['lokasi_sampel'] : '-',
             ];
 
-            // Jenis Sampel: tetap tampilkan teks lengkap (misal 'Obat Traditional (OT) - Rutin')
-            if (!empty($data['jenis_sampel'])) {
-                $mappedData['Jenis Sampel'] = $data['jenis_sampel'];
-            }
-            if (!empty($data['komoditi'])) {
-                $mappedData['Komoditi'] = $data['komoditi'];
-            }
-            if (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '-') {
-                $mappedData['Lokasi Sampel'] = $data['lokasi_sampel'];
-            }
             if (!empty($data['catatan']) && $data['catatan'] !== '-') {
                 $mappedData['Catatan'] = $data['catatan'];
             }
@@ -434,15 +435,9 @@ class PdfImportService
             if (!empty($data['nama_produk']) && $data['nama_produk'] !== '-') {
                 $qrLines[] = "Nama Produk: " . $data['nama_produk'];
             }
-            if (!empty($data['jenis_sampel'])) {
-                $qrLines[] = "Jenis Sampel: " . $data['jenis_sampel'];
-            } elseif (!empty($data['komoditi'])) {
-                $qrLines[] = "Jenis / Komoditi: " . $data['komoditi'];
-            }
-            $qrLines[] = "NIE: " . ($data['nie'] ?? '-');
-            if (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '-') {
-                $qrLines[] = "Lokasi Sampel: " . $data['lokasi_sampel'];
-            }
+            $qrLines[] = "Jenis Sampel: " . (!empty($data['jenis_sampel']) ? $data['jenis_sampel'] : ($data['komoditi'] ?? '-'));
+            $qrLines[] = "NIE: " . (!empty($data['nie']) ? $data['nie'] : '-');
+            $qrLines[] = "Lokasi Sampel: " . (!empty($data['lokasi_sampel']) ? $data['lokasi_sampel'] : '-');
             if (!empty($data['bentuk_sediaan']) && $data['bentuk_sediaan'] !== '-') {
                 $qrLines[] = "Bentuk Sediaan: " . $data['bentuk_sediaan'];
             }

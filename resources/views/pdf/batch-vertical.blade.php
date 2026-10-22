@@ -307,13 +307,11 @@
                         <td class="spu-sep">:</td>
                         <td class="spu-val">{{ $nie }}</td>
                     </tr>
-                    @if(!empty($lokasiSampel))
                     <tr>
                         <td class="spu-label">Lokasi Sampel</td>
                         <td class="spu-sep">:</td>
-                        <td class="spu-val">{{ $lokasiSampel }}</td>
+                        <td class="spu-val">{{ (!empty($lokasiSampel) && $lokasiSampel !== '') ? $lokasiSampel : '-' }}</td>
                     </tr>
-                    @endif
                     <tr>
                         <td class="spu-label">Anggaran</td>
                         <td class="spu-sep">:</td>

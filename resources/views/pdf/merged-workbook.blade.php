@@ -324,6 +324,13 @@
                 <td class="spu-sep">:</td>
                 <td class="spu-val">{{ $asalSampling }}</td>
             </tr>
+            @if(!empty($jenisSampel))
+            <tr>
+                <td class="spu-label">Jenis Sampel</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val" colspan="7">{{ $jenisSampel }}</td>
+            </tr>
+            @endif
         </table>
     </div>
 
