@@ -81,6 +81,18 @@ class PengujianTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_modal_attributes_and_qr_target_url()
+    {
+        $this->post('/load-sample');
+        $item = PengujianItem::latest('id')->first();
+
+        $response = $this->get('/?batch=' . $item->batch_id);
+        $response->assertStatus(200);
+        $response->assertSee('js-btn-qr-modal');
+        $response->assertSee('data-target-url=', false);
+        $response->assertSee('/scan/' . $item->qr_token);
+    }
+
     public function test_excel_template_download()
     {
         $response = $this->get('/download-template');

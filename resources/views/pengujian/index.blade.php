@@ -418,9 +418,16 @@
                                     <td class="py-2.5 px-4 bg-blue-50/30 border-l border-blue-100 text-center">
                                         <div class="flex items-center justify-center">
                                             <button type="button" 
-                                                    class="p-1 bg-white rounded-xl border border-slate-200 hover:border-[#005baa] hover:shadow-md transition-all group/qr shrink-0" 
+                                                    class="js-btn-qr-modal p-1 bg-white rounded-xl border border-slate-200 hover:border-[#005baa] hover:shadow-md transition-all group/qr shrink-0" 
                                                     title="Klik untuk melihat Pop-up QR Code"
-                                                    onclick="openQrModal('{{ $item->qr_token }}', '{{ addslashes($item->display_title) }}', '{{ addslashes($item->code) }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                    data-qr-token="{{ $item->qr_token }}"
+                                                    data-title="{{ $item->display_title }}"
+                                                    data-code="{{ $item->code }}"
+                                                    data-target-url="{{ route('pengujian.scan', $item->qr_token) }}"
+                                                    data-pdf-url="{{ route('pengujian.pdf', $item->id) }}"
+                                                    data-fpdf-url="{{ route('pengujian.pdf.fpdf', $item->id) }}"
+                                                    data-info="{{ $item->qr_content ?: ($item->code ?: '-') }}"
+                                                    data-qr-base64="{{ $item->qr_base64 }}">
                                                 <div class="w-14 h-14 flex items-center justify-center p-0.5">
                                                     {!! $item->qr_svg_small !!}
                                                 </div>
@@ -433,9 +440,16 @@
                                         <div class="flex items-center justify-center gap-1.5 flex-wrap">
                                             <!-- Tombol Pop-up QR -->
                                             <button type="button"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-2xs transition-colors"
+                                                    class="js-btn-qr-modal inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-2xs transition-colors"
                                                     title="Buka pop-up QR Code besar"
-                                                    onclick="openQrModal('{{ $item->qr_token }}', '{{ addslashes($item->display_title) }}', '{{ addslashes($item->code) }}', '{{ addslashes($item->qr_content ?: ($item->code ?: '-')) }}', '{{ route('pengujian.scan', $item->qr_token) }}', '{{ route('pengujian.pdf', $item->id) }}', '{{ route('pengujian.pdf.fpdf', $item->id) }}', '{{ $item->qr_base64 }}')">
+                                                    data-qr-token="{{ $item->qr_token }}"
+                                                    data-title="{{ $item->display_title }}"
+                                                    data-code="{{ $item->code }}"
+                                                    data-target-url="{{ route('pengujian.scan', $item->qr_token) }}"
+                                                    data-pdf-url="{{ route('pengujian.pdf', $item->id) }}"
+                                                    data-fpdf-url="{{ route('pengujian.pdf.fpdf', $item->id) }}"
+                                                    data-info="{{ $item->qr_content ?: ($item->code ?: '-') }}"
+                                                    data-qr-base64="{{ $item->qr_base64 }}">
                                                 <span class="material-symbols-outlined text-[15px]">qr_code_2</span>
                                                 <span>Pop-up QR</span>
                                             </button>
@@ -479,7 +493,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base leading-tight">Pop-up QR Code Sampel</h3>
-                        <p class="text-xs text-blue-100 mt-0.5">Informasi langsung dari data kolom sebelah</p>
+                        <p class="text-xs text-blue-100 mt-0.5">Pindai QR untuk langsung membuka Laporan Dokumen PDF baris ini</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeQrModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition text-lg font-bold">
@@ -488,7 +502,7 @@
             </div>
 
             <!-- Modal Body -->
-            <div class="p-6 text-center space-y-4">
+            <div class="p-6 text-center space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                 
                 <!-- Sample Header & Code -->
                 <div>
@@ -502,24 +516,45 @@
 
                 <!-- Big QR Code Container (Local High-Res SVG) -->
                 <div class="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200 inline-block shadow-inner">
-                    <div id="modal-qr-container" class="w-60 h-60 mx-auto flex items-center justify-center bg-white p-2 rounded-xl shadow-xs">
+                    <div id="modal-qr-container" class="w-56 h-56 mx-auto flex items-center justify-center bg-white p-2 rounded-xl shadow-xs">
                         <img id="modal-qr-img" src="" alt="QR Code" class="w-full h-full object-contain" />
                     </div>
+                    <p class="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[15px] text-emerald-600">smartphone</span>
+                        Pindai dengan kamera HP untuk membuka Laporan PDF
+                    </p>
                 </div>
 
-                <!-- Card: Isi Informasi QR Code (Dari Kolom Sebelahnya) -->
+                <!-- Card: Link Target Dokumen PDF -->
+                <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 text-left space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-[#005baa] flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[15px]">link</span>
+                            Link Target QR Code (File Export PDF):
+                        </span>
+                        <button type="button" onclick="copyTargetUrl()" id="btn-copy-url" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#005baa] hover:underline">
+                            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                            <span id="btn-copy-url-text">Salin Link</span>
+                        </button>
+                    </div>
+                    <a id="modal-target-url" href="#" target="_blank" class="text-xs font-mono text-blue-700 hover:underline break-all block font-semibold bg-white p-2 rounded-lg border border-blue-100">
+                        -
+                    </a>
+                </div>
+
+                <!-- Card: Rincian Data Sampel Pengujian -->
                 <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-left space-y-2">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-emerald-600 text-[16px]">info</span>
-                            Isi Informasi QR Code (Dari Kolom Sebelahnya):
+                            <span class="material-symbols-outlined text-emerald-600 text-[16px]">fact_check</span>
+                            Rincian Data Sampel:
                         </span>
-                        <button type="button" onclick="copyQrContent()" id="btn-copy" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#005baa] hover:underline">
+                        <button type="button" onclick="copyQrContent()" id="btn-copy" class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-[#005baa]">
                             <span class="material-symbols-outlined text-[14px]">content_copy</span>
-                            <span id="btn-copy-text">Salin Teks</span>
+                            <span id="btn-copy-text">Salin Rincian</span>
                         </button>
                     </div>
-                    <div id="modal-qr-content" class="text-xs font-mono text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 break-words whitespace-pre-line select-all font-semibold leading-relaxed">
+                    <div id="modal-qr-content" class="text-xs font-mono text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 break-words whitespace-pre-line select-all font-medium leading-relaxed max-h-36 overflow-y-auto custom-scrollbar">
                         -
                     </div>
                 </div>
@@ -533,7 +568,7 @@
 
                     <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all">
                         <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                        <span>Export PDF Baris Ini</span>
+                        <span>Buka PDF Baris Ini</span>
                     </a>
                 </div>
             </div>
@@ -613,13 +648,23 @@
         // Pop-up Modal Handlers
         const modal = document.getElementById('qr-modal');
         let currentRawQrContent = '';
+        let currentTargetUrl = '';
 
         function openQrModal(qrToken, title, code, qrContent, scanUrl, pdfUrl, fpdfUrl, qrBase64) {
             currentRawQrContent = qrContent || code;
-            document.getElementById('modal-sample-code').innerText = code;
-            document.getElementById('modal-sample-title').innerText = title;
+            currentTargetUrl = scanUrl || pdfUrl;
+
+            document.getElementById('modal-sample-code').innerText = code || 'SMP';
+            document.getElementById('modal-sample-title').innerText = title || 'Sampel Pengujian';
             document.getElementById('modal-qr-content').innerText = currentRawQrContent;
-            document.getElementById('modal-btn-pdf').href = pdfUrl;
+            
+            const targetUrlEl = document.getElementById('modal-target-url');
+            if (targetUrlEl) {
+                targetUrlEl.innerText = currentTargetUrl;
+                targetUrlEl.href = currentTargetUrl;
+            }
+
+            document.getElementById('modal-btn-pdf').href = pdfUrl || currentTargetUrl;
 
             // Render high-res SVG directly from server base64 or fallback to /qr/ route
             const qrImg = document.getElementById('modal-qr-img');
@@ -636,19 +681,54 @@
 
         function closeQrModal() {
             modal.classList.add('hidden');
-            document.getElementById('modal-qr-img').src = '';
+            const qrImg = document.getElementById('modal-qr-img');
+            if (qrImg) qrImg.src = '';
         }
 
         function copyQrContent() {
             if (!currentRawQrContent) return;
             navigator.clipboard.writeText(currentRawQrContent).then(() => {
                 const textEl = document.getElementById('btn-copy-text');
-                textEl.innerText = 'Tersalin!';
-                setTimeout(() => {
-                    textEl.innerText = 'Salin Teks';
-                }, 2000);
+                if (textEl) {
+                    textEl.innerText = 'Tersalin!';
+                    setTimeout(() => {
+                        textEl.innerText = 'Salin Rincian';
+                    }, 2000);
+                }
             });
         }
+
+        function copyTargetUrl() {
+            if (!currentTargetUrl) return;
+            navigator.clipboard.writeText(currentTargetUrl).then(() => {
+                const textEl = document.getElementById('btn-copy-url-text');
+                if (textEl) {
+                    textEl.innerText = 'Tersalin!';
+                    setTimeout(() => {
+                        textEl.innerText = 'Salin Link';
+                    }, 2000);
+                }
+            });
+        }
+
+        // Event delegation for opening QR Modal - safe from quote/newline escaping bugs
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.js-btn-qr-modal');
+            if (!btn) return;
+            e.preventDefault();
+
+            const ds = btn.dataset;
+            openQrModal(
+                ds.qrToken || '',
+                ds.title || '',
+                ds.code || '',
+                ds.info || '',
+                ds.targetUrl || '',
+                ds.pdfUrl || '',
+                ds.fpdfUrl || '',
+                ds.qrBase64 || ''
+            );
+        });
 
         // Close on ESC key or clicking outside backdrop
         window.addEventListener('keydown', (e) => {

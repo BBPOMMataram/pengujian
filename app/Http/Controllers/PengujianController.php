@@ -55,15 +55,15 @@ class PengujianController extends Controller
             $targetUrl = route('pengujian.scan', $item->qr_token);
             $item->target_url = $targetUrl;
             
-            // The QR code contains the information from the adjacent column!
-            $contentToEncode = $item->qr_content ?: ($item->code ?: $targetUrl);
-            $item->qr_content_display = $contentToEncode;
+            // The QR code encodes the direct URL pointing to the row's PDF export!
+            $contentToEncode = $targetUrl;
+            $item->qr_content_display = $item->qr_content ?: ($item->code ?: $targetUrl);
 
             // Generate small SVG for table column (di kolom sampingnya)
             $item->qr_svg_small = (string) QrCode::size(68)->margin(1)->generate($contentToEncode);
             
             // Generate large SVG for popup modal
-            $item->qr_svg_large = (string) QrCode::size(250)->margin(2)->generate($contentToEncode);
+            $item->qr_svg_large = (string) QrCode::size(260)->margin(2)->generate($contentToEncode);
             $item->qr_base64 = base64_encode($item->qr_svg_large);
 
             if (is_array($item->data)) {
@@ -352,8 +352,8 @@ class PengujianController extends Controller
     public function qrImage(string $qrToken)
     {
         $item = PengujianItem::where('qr_token', $qrToken)->firstOrFail();
-        $contentToEncode = $item->qr_content ?: route('pengujian.scan', $item->qr_token);
-        $svg = (string) QrCode::size(250)->margin(2)->generate($contentToEncode);
+        $targetUrl = route('pengujian.scan', $item->qr_token);
+        $svg = (string) QrCode::size(260)->margin(2)->generate($targetUrl);
 
         return response($svg, 200, [
             'Content-Type' => 'image/svg+xml',
@@ -376,9 +376,9 @@ class PengujianController extends Controller
      */
     protected function generateDomPdf(PengujianItem $item, string $disposition = 'inline')
     {
-        $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
+        $targetUrl = route('pengujian.scan', $item->qr_token);
         
-        $qrSvg = QrCode::size(140)->margin(1)->generate($contentToEncode);
+        $qrSvg = QrCode::size(140)->margin(1)->generate($targetUrl);
         $qrBase64 = base64_encode($qrSvg);
 
         $pdf = Pdf::loadView('pdf.laporan-pengujian', [
@@ -415,8 +415,8 @@ class PengujianController extends Controller
         // Collect distinct headers from this batch
         $headers = [];
         foreach ($items as $item) {
-            $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
-            $qrSvg = QrCode::size(100)->margin(1)->generate($contentToEncode);
+            $targetUrl = route('pengujian.scan', $item->qr_token);
+            $qrSvg = QrCode::size(100)->margin(1)->generate($targetUrl);
             $item->qr_base64 = base64_encode($qrSvg);
 
             if (is_array($item->data)) {
@@ -524,8 +524,8 @@ class PengujianController extends Controller
         foreach ($grouped as $batchId => $groupItems) {
             $headers = [];
             foreach ($groupItems as $item) {
-                $contentToEncode = $item->qr_content ?: ($item->code ?: route('pengujian.scan', $item->qr_token));
-                $qrSvg = QrCode::size(90)->margin(1)->generate($contentToEncode);
+                $targetUrl = route('pengujian.scan', $item->qr_token);
+                $qrSvg = QrCode::size(90)->margin(1)->generate($targetUrl);
                 $item->qr_base64 = base64_encode($qrSvg);
 
                 if (is_array($item->data)) {
