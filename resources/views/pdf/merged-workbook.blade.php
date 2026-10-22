@@ -276,9 +276,10 @@
         $firstItemInGroup = $firstGroup && isset($firstGroup['items']) ? $firstGroup['items']->first() : null;
         $gData = $firstItemInGroup && is_array($firstItemInGroup->data) ? $firstItemInGroup->data : [];
         $spuNum = $gData['no_spu'] ?? $gData['spu'] ?? $gData['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
-        $komoditi = $gData['komoditi'] ?? 'Narkotika';
-        $anggaran = $gData['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
-        $asalSampling = $gData['asal_sampling'] ?? $gData['asal_sampel'] ?? 'Kepolisian';
+        $jenisSampel = $gData['jenis_sampel'] ?? $gData['Jenis Sampel'] ?? null;
+        $komoditi = $gData['komoditi'] ?? $gData['Komoditi'] ?? ($jenisSampel ? (str_contains($jenisSampel, ' - ') ? explode(' - ', $jenisSampel)[0] : $jenisSampel) : 'Narkotika');
+        $anggaran = $gData['anggaran'] ?? $gData['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $gData['asal_sampling'] ?? $gData['Asal Sampling'] ?? $gData['asal_sampel'] ?? 'Kepolisian';
     @endphp
 
     <!-- KOP RESMI BBPOM -->

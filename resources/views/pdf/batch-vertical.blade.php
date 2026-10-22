@@ -249,9 +249,13 @@
         @php
             $itemData = is_array($item->data) ? $item->data : [];
             $spuNum = $itemData['no_spu'] ?? $itemData['spu'] ?? $itemData['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
-            $komoditi = $itemData['komoditi'] ?? 'Narkotika';
-            $anggaran = $itemData['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
-            $asalSampling = $itemData['asal_sampling'] ?? $itemData['asal_sampel'] ?? 'Kepolisian';
+            $jenisSampel = $itemData['jenis_sampel'] ?? $itemData['Jenis Sampel'] ?? null;
+            $komoditi = $itemData['komoditi'] ?? $itemData['Komoditi'] ?? ($jenisSampel ? (str_contains($jenisSampel, ' - ') ? explode(' - ', $jenisSampel)[0] : $jenisSampel) : 'Narkotika');
+            $rawNie = $itemData['nie'] ?? $itemData['NIE'] ?? $itemData['nomor_izin_edar'] ?? '';
+            $nie = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
+            $lokasiSampel = $itemData['lokasi_sampel'] ?? $itemData['Lokasi Sampel'] ?? null;
+            $anggaran = $itemData['anggaran'] ?? $itemData['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+            $asalSampling = $itemData['asal_sampling'] ?? $itemData['Asal Sampling'] ?? $itemData['asal_sampel'] ?? 'Kepolisian';
         @endphp
 
         <div class="page-container {{ !$loop->last ? 'page-break' : '' }}">
@@ -291,6 +295,25 @@
                         <td class="spu-sep">:</td>
                         <td class="spu-val">{{ $komoditi }}</td>
                     </tr>
+                    @if(!empty($jenisSampel))
+                    <tr>
+                        <td class="spu-label">Jenis Sampel</td>
+                        <td class="spu-sep">:</td>
+                        <td class="spu-val">{{ $jenisSampel }}</td>
+                    </tr>
+                    @endif
+                    <tr>
+                        <td class="spu-label">NIE</td>
+                        <td class="spu-sep">:</td>
+                        <td class="spu-val">{{ $nie }}</td>
+                    </tr>
+                    @if(!empty($lokasiSampel))
+                    <tr>
+                        <td class="spu-label">Lokasi Sampel</td>
+                        <td class="spu-sep">:</td>
+                        <td class="spu-val">{{ $lokasiSampel }}</td>
+                    </tr>
+                    @endif
                     <tr>
                         <td class="spu-label">Anggaran</td>
                         <td class="spu-sep">:</td>

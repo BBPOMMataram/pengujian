@@ -260,10 +260,12 @@ class PengujianImport implements ToCollection, WithCalculatedFormulas, HasRefere
                 }
             }
 
-            // Bangun isi QR Code yang rapi memuat Kode Sampel, Nama Produk, dan Jenis/Komoditi jika tersedia
+            // Bangun isi QR Code yang rapi memuat Kode Sampel, Nama Produk, Jenis, NIE, dan Lokasi jika tersedia
             $kodeVal = null;
             $namaVal = null;
             $jenisVal = null;
+            $nieVal = null;
+            $lokasiVal = null;
             $paramVal = null;
 
             foreach ($mappedData as $k => $v) {
@@ -276,6 +278,10 @@ class PengujianImport implements ToCollection, WithCalculatedFormulas, HasRefere
                     $namaVal = $v;
                 } elseif ($jenisVal === null && (str_contains($kL, 'jenis') || str_contains($kL, 'komoditi') || str_contains($kL, 'kategori') || str_contains($kL, 'sediaan'))) {
                     $jenisVal = $v;
+                } elseif ($nieVal === null && (str_contains($kL, 'nie') || str_contains($kL, 'izin edar'))) {
+                    $nieVal = $v;
+                } elseif ($lokasiVal === null && (str_contains($kL, 'lokasi') || str_contains($kL, 'lab') || str_contains($kL, 'catatan'))) {
+                    $lokasiVal = $v;
                 } elseif ($paramVal === null && (str_contains($kL, 'parameter') || str_contains($kL, 'uji') || str_contains($kL, 'metode'))) {
                     $paramVal = $v;
                 }
@@ -286,7 +292,9 @@ class PengujianImport implements ToCollection, WithCalculatedFormulas, HasRefere
             if ($kodeVal) $qrLines[] = "Kode Sampel: " . $kodeVal;
             if ($namaVal) $qrLines[] = "Nama Produk: " . $namaVal;
             if ($jenisVal) $qrLines[] = "Jenis / Komoditi: " . $jenisVal;
-            if ($paramVal && count($qrLines) < 4) $qrLines[] = "Parameter: " . $paramVal;
+            $qrLines[] = "NIE: " . ($nieVal ?: '-');
+            if ($lokasiVal) $qrLines[] = "Lokasi Sampel: " . $lokasiVal;
+            if ($paramVal && count($qrLines) < 6) $qrLines[] = "Parameter: " . $paramVal;
 
             if (!empty($qrLines)) {
                 $qrContent = implode("\n", $qrLines);

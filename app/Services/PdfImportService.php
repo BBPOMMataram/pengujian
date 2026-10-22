@@ -78,6 +78,89 @@ class PdfImportService
     }
 
     /**
+     * Parse and decode code like 'K1 M0 R1' from Catatan into human readable Lokasi Sampel:
+     * K = Lab Kimia, M = Lab Mikro, R = Retensi.
+     */
+    public function parseLokasiSampel(?string $text): string
+    {
+        if (empty($text)) {
+            return '-';
+        }
+
+        $parts = [];
+        $found = false;
+
+        // K = Kimia (e.g. K1 -> Lab Kimia 1 Sampel, K2 -> Lab Kimia 2 Sampel, K0 -> Lab Kimia 0 Sampel)
+        if (preg_match('/(?:^|[\s,;])K\s*[:=]?\s*(\d+)/i', $text, $km)) {
+            $count = (int) $km[1];
+            $parts[] = "Lab Kimia {$count} Sampel";
+            $found = true;
+        }
+
+        // M = Mikro (e.g. M0 -> Lab Mikro 0 Sampel, M1 -> Lab Mikro 1 Sampel)
+        if (preg_match('/(?:^|[\s,;])M\s*[:=]?\s*(\d+)/i', $text, $mm)) {
+            $count = (int) $mm[1];
+            $parts[] = "Lab Mikro {$count} Sampel";
+            $found = true;
+        }
+
+        // R = Retensi (e.g. R1 -> Retensi 1 Sampel, R0 -> Retensi 0 Sampel)
+        if (preg_match('/(?:^|[\s,;])R\s*[:=]?\s*(\d+)/i', $text, $rm)) {
+            $count = (int) $rm[1];
+            $parts[] = "Retensi {$count} Sampel";
+            $found = true;
+        }
+
+        if ($found && !empty($parts)) {
+            return implode(', ', $parts);
+        }
+
+        $trimmed = trim($text);
+        return $trimmed !== '' ? $trimmed : '-';
+    }
+
+    /**
+     * Map full Jenis Sampel string (e.g. 'Obat Traditional (OT) - Rutin') to standard Komoditi.
+     */
+    public function mapKomoditi(?string $jenisSampel): string
+    {
+        if (empty($jenisSampel)) {
+            return 'Narkotika';
+        }
+
+        if (preg_match('/Obat\s*Tradisi?onal|\(OT\)/i', $jenisSampel)) {
+            return 'Obat Tradisional';
+        }
+        if (preg_match('/Narkotika/i', $jenisSampel)) {
+            return 'Narkotika';
+        }
+        if (preg_match('/Psikotropika/i', $jenisSampel)) {
+            return 'Psikotropika';
+        }
+        if (preg_match('/Kosmetik/i', $jenisSampel)) {
+            return 'Kosmetik';
+        }
+        if (preg_match('/Pangan|Makanan/i', $jenisSampel)) {
+            return 'Pangan Olahan';
+        }
+        if (preg_match('/Suplemen|\(SK\)/i', $jenisSampel)) {
+            return 'Suplemen Kesehatan';
+        }
+        if (preg_match('/Kuasi/i', $jenisSampel)) {
+            return 'Obat Kuasi';
+        }
+        if (preg_match('/Obat\b/i', $jenisSampel)) {
+            return 'Obat';
+        }
+
+        if (str_contains($jenisSampel, ' - ')) {
+            return trim(explode(' - ', $jenisSampel)[0]);
+        }
+
+        return trim($jenisSampel);
+    }
+
+    /**
      * Extract structured samples from BBPOM SPU / Permintaan Uji document.
      */
     protected function extractSpuDocument(string $fullText, array $pages, string $batchId, string $filename): array
@@ -86,7 +169,8 @@ class PdfImportService
         $now = now();
 
         // 1. Ekstraksi dari Tabel Halaman 1 (Tabel Surat Permintaan Uji)
-        $spuPattern = '/(?:^|\n)\s*(\d+)\s+Kode Sampel[:\s]*\n?([0-9A-Za-z\.\-\/]+)(.*?)(?=(?:\n\s*\d+\s+Kode Sampel[:\s]*)|\nKeterangan Jumlah Sampel|\nDAFTAR LAMPIRAN SAMPEL|$)/s';
+        // Pola fleksibel mendukung '1 Kode Sampel:' maupun '1Kode Sampel:'
+        $spuPattern = '/(?:^|\n)\s*(\d+)\s*Kode Sampel[:\s]*\n?([0-9A-Za-z\.\-\/]+)(.*?)(?=(?:\n\s*\d+\s*Kode Sampel[:\s]*)|\nKeterangan Jumlah Sampel|\nDAFTAR LAMPIRAN SAMPEL|$)/s';
         
         if (preg_match_all($spuPattern, $fullText, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $m) {
@@ -102,10 +186,34 @@ class PdfImportService
                 $namaProduk = '';
                 if (preg_match('/Nama Produk[:\s]*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $body, $pn)) {
                     $rawNama = trim($pn[1]);
-                    // Potong jika ada label lain yang terbawa
                     $rawNama = preg_split('/(•|\bNIE\b|\bMerk\b|\bNarkotika\b|\bKomposisi\b|\bED\b|\bBets\b|\bPabrik\b)/i', $rawNama)[0];
                     $namaProduk = preg_replace('/\s+/', ' ', trim($rawNama));
                 }
+
+                // Ekstraksi NIE (Nomor Izin Edar) - jika kosong/strip fallback '-'
+                $nie = '-';
+                if (preg_match('/•\s*NIE\s*:\s*([^•\n]*)/i', $body, $niem)) {
+                    $rawNie = trim($niem[1]);
+                    $nie = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
+                }
+
+                // Ekstraksi Jenis Sampel (bullet point persis setelah '• Merk:')
+                // Contoh: 'Obat Traditional (OT) - Rutin' atau 'Narkotika - Pihak Ke 3 - Kepolisian'
+                $jenisSampel = '';
+                if (preg_match('/•\s*Merk\s*:[^\n]*\n\s*•\s*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $body, $jm)) {
+                    $rawJ = trim($jm[1]);
+                    $rawJ = preg_split('/(•|\bKomposisi\b|\bED\b|\bBets\b|\bPabrik\b|\bProvinsi\b)/i', $rawJ)[0];
+                    $jenisSampel = preg_replace('/\s+/', ' ', trim($rawJ));
+                }
+
+                // Ekstraksi Catatan dan konversi ke Lokasi Sampel (K = Lab Kimia, M = Lab Mikro, R = Retensi)
+                $catatan = '';
+                if (preg_match('/(?:NTPN[^\n]*\n\s*)([^\n]+)/i', $body, $cm)) {
+                    $catatan = trim($cm[1]);
+                } elseif (preg_match('/Catatan[:\s]*([^\n]+)/i', $body, $cm2)) {
+                    $catatan = trim($cm2[1]);
+                }
+                $lokasiSampel = $this->parseLokasiSampel($catatan ?: $body);
 
                 $keteranganSampling = '';
                 if (preg_match('/(Plastik|Kardus|Botol|Aluminium|Kemasan|Amplop|Klip)[^•\n]+(?:\n[ \t]*[^•\n]+)*/i', $body, $sm)) {
@@ -145,6 +253,11 @@ class PdfImportService
                     'row_no' => $rowNo,
                     'kode_sampel' => $code,
                     'nama_produk' => $namaProduk,
+                    'nie' => $nie,
+                    'jenis_sampel' => $jenisSampel,
+                    'komoditi' => $this->mapKomoditi($jenisSampel),
+                    'lokasi_sampel' => $lokasiSampel,
+                    'catatan' => $catatan ?: '-',
                     'keterangan_sampling' => $keteranganSampling,
                     'tempat_sampling' => $tempatSampling,
                     'tanggal_diterima' => $tanggalDiterima,
@@ -179,10 +292,10 @@ class PdfImportService
                     $bentukSediaan = preg_replace('/\s+/', ' ', trim($rawBs));
                 }
 
-                $komoditi = '';
+                $komoditiLampiran = '';
                 if (preg_match('/Komoditi\s+([^\n]+)/i', $block, $km)) {
                     $rawKm = trim(explode('Identitas', $km[1])[0]);
-                    $komoditi = preg_replace('/\s+/', ' ', trim($rawKm));
+                    $komoditiLampiran = preg_replace('/\s+/', ' ', trim($rawKm));
                 }
 
                 $namaSampel = '';
@@ -194,7 +307,9 @@ class PdfImportService
                 if (isset($samples[$code])) {
                     if ($netto) $samples[$code]['netto'] = $netto;
                     if ($bentukSediaan) $samples[$code]['bentuk_sediaan'] = $bentukSediaan;
-                    if ($komoditi) $samples[$code]['komoditi'] = $komoditi;
+                    if ($komoditiLampiran && empty($samples[$code]['komoditi'])) {
+                        $samples[$code]['komoditi'] = $komoditiLampiran;
+                    }
                     if (!$samples[$code]['nama_produk'] && $namaSampel) {
                         $samples[$code]['nama_produk'] = $namaSampel;
                     }
@@ -202,8 +317,11 @@ class PdfImportService
                     $samples[$code] = [
                         'row_no' => $lIdx++,
                         'kode_sampel' => $code,
-                        'nama_produk' => $namaSampel,
-                        'komoditi' => $komoditi,
+                        'nama_produk' => $namaSampel ?: 'Sampel Uji ' . $code,
+                        'nie' => '-',
+                        'jenis_sampel' => $komoditiLampiran ?: 'Narkotika',
+                        'komoditi' => $this->mapKomoditi($komoditiLampiran),
+                        'lokasi_sampel' => '-',
                         'bentuk_sediaan' => $bentukSediaan,
                         'netto' => $netto,
                     ];
@@ -221,6 +339,10 @@ class PdfImportService
                         'row_no' => $lIdx++,
                         'kode_sampel' => $uc,
                         'nama_produk' => 'Sampel Uji ' . $uc,
+                        'nie' => '-',
+                        'jenis_sampel' => 'Narkotika',
+                        'komoditi' => 'Narkotika',
+                        'lokasi_sampel' => '-',
                     ];
                 }
             }
@@ -239,10 +361,21 @@ class PdfImportService
                 'Kode Sampel' => $code,
                 'QR Code' => '(Otomatis Di-generate)',
                 'Nama Produk / Sampel' => $data['nama_produk'] ?? '-',
+                'NIE' => $data['nie'] ?? '-',
             ];
 
+            // Jenis Sampel: tetap tampilkan teks lengkap (misal 'Obat Traditional (OT) - Rutin')
+            if (!empty($data['jenis_sampel'])) {
+                $mappedData['Jenis Sampel'] = $data['jenis_sampel'];
+            }
             if (!empty($data['komoditi'])) {
                 $mappedData['Komoditi'] = $data['komoditi'];
+            }
+            if (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '-') {
+                $mappedData['Lokasi Sampel'] = $data['lokasi_sampel'];
+            }
+            if (!empty($data['catatan']) && $data['catatan'] !== '-') {
+                $mappedData['Catatan'] = $data['catatan'];
             }
             if (!empty($data['bentuk_sediaan'])) {
                 $mappedData['Bentuk Sediaan'] = $data['bentuk_sediaan'];
@@ -269,14 +402,20 @@ class PdfImportService
                 $mappedData['Keterangan Sampling'] = $data['keterangan_sampling'];
             }
 
-            // Susun isi QR Code yang rapi memuat Kode Sampel, Nama Produk, dan Jenis/Komoditi
+            // Susun isi QR Code memuat Kode Sampel, Nama Produk, Jenis Sampel lengkap, NIE, dan Lokasi Sampel
             $qrLines = [];
             $qrLines[] = "Kode Sampel: " . $code;
             if (!empty($data['nama_produk']) && $data['nama_produk'] !== '-') {
                 $qrLines[] = "Nama Produk: " . $data['nama_produk'];
             }
-            if (!empty($data['komoditi']) && $data['komoditi'] !== '-') {
+            if (!empty($data['jenis_sampel'])) {
+                $qrLines[] = "Jenis Sampel: " . $data['jenis_sampel'];
+            } elseif (!empty($data['komoditi'])) {
                 $qrLines[] = "Jenis / Komoditi: " . $data['komoditi'];
+            }
+            $qrLines[] = "NIE: " . ($data['nie'] ?? '-');
+            if (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '-') {
+                $qrLines[] = "Lokasi Sampel: " . $data['lokasi_sampel'];
             }
             if (!empty($data['bentuk_sediaan']) && $data['bentuk_sediaan'] !== '-') {
                 $qrLines[] = "Bentuk Sediaan: " . $data['bentuk_sediaan'];
@@ -336,9 +475,7 @@ class PdfImportService
         $records = [];
         $rowNum = 1;
 
-        // Cek baris-baris yang memiliki pemisah tab atau spasi ganda
         foreach ($cleanLines as $line) {
-            // Deteksi jika baris berisi kode sampel atau diawali nomor urut
             if (preg_match('/^(\d+)\s+([A-Za-z0-9\.\-\/]{4,})\s+(.*)$/', $line, $m)) {
                 $no = $m[1];
                 $code = $m[2];
@@ -348,7 +485,8 @@ class PdfImportService
                     'No' => $no,
                     'Kode Sampel' => $code,
                     'QR Code' => '(Otomatis Di-generate)',
-                    'Informasi Sampel' => $desc,
+                    'Nama Produk / Sampel' => $desc,
+                    'NIE' => '-',
                 ];
 
                 $records[] = [
@@ -358,7 +496,7 @@ class PdfImportService
                     'sheet_name' => 'Tabel PDF',
                     'row_number' => $rowNum++,
                     'qr_token' => Str::random(32),
-                    'qr_content' => $code,
+                    'qr_content' => "Kode Sampel: {$code}\nNama Produk: {$desc}\nNIE: -",
                     'data' => json_encode($mappedData),
                     'created_at' => $now,
                     'updated_at' => $now,

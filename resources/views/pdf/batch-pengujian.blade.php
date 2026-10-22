@@ -221,9 +221,10 @@
         $firstItem = $items->first();
         $firstData = $firstItem && is_array($firstItem->data) ? $firstItem->data : [];
         $spuNum = $firstData['no_spu'] ?? $firstData['spu'] ?? $firstData['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
-        $komoditi = $firstData['komoditi'] ?? 'Narkotika';
-        $anggaran = $firstData['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
-        $asalSampling = $firstData['asal_sampling'] ?? $firstData['asal_sampel'] ?? 'Kepolisian';
+        $jenisSampel = $firstData['jenis_sampel'] ?? $firstData['Jenis Sampel'] ?? null;
+        $komoditi = $firstData['komoditi'] ?? $firstData['Komoditi'] ?? ($jenisSampel ? (str_contains($jenisSampel, ' - ') ? explode(' - ', $jenisSampel)[0] : $jenisSampel) : 'Narkotika');
+        $anggaran = $firstData['anggaran'] ?? $firstData['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $firstData['asal_sampling'] ?? $firstData['Asal Sampling'] ?? $firstData['asal_sampel'] ?? 'Kepolisian';
 
         // Filter out kolom QR Code
         $filteredHeaders = [];

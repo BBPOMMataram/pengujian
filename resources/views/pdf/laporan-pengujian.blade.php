@@ -196,9 +196,13 @@
         // Ambil info SPU dari data sampel jika ada, atau gunakan default resmi
         $dataArr = is_array($item->data) ? $item->data : [];
         $spuNum = $dataArr['no_spu'] ?? $dataArr['spu'] ?? $dataArr['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
-        $komoditi = $dataArr['komoditi'] ?? 'Narkotika';
-        $anggaran = $dataArr['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
-        $asalSampling = $dataArr['asal_sampling'] ?? $dataArr['asal_sampel'] ?? 'Kepolisian';
+        $jenisSampel = $dataArr['jenis_sampel'] ?? $dataArr['Jenis Sampel'] ?? null;
+        $komoditi = $dataArr['komoditi'] ?? $dataArr['Komoditi'] ?? ($jenisSampel ? (str_contains($jenisSampel, ' - ') ? explode(' - ', $jenisSampel)[0] : $jenisSampel) : 'Narkotika');
+        $rawNie = $dataArr['nie'] ?? $dataArr['NIE'] ?? $dataArr['nomor_izin_edar'] ?? '';
+        $nie = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
+        $lokasiSampel = $dataArr['lokasi_sampel'] ?? $dataArr['Lokasi Sampel'] ?? null;
+        $anggaran = $dataArr['anggaran'] ?? $dataArr['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $dataArr['asal_sampling'] ?? $dataArr['Asal Sampling'] ?? $dataArr['asal_sampel'] ?? 'Kepolisian';
     @endphp
 
     <!-- KOP SURAT RESMI BPOM -->
@@ -236,6 +240,25 @@
                 <td class="spu-sep">:</td>
                 <td class="spu-val">{{ $komoditi }}</td>
             </tr>
+            @if(!empty($jenisSampel))
+            <tr>
+                <td class="spu-label">Jenis Sampel</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $jenisSampel }}</td>
+            </tr>
+            @endif
+            <tr>
+                <td class="spu-label">NIE</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $nie }}</td>
+            </tr>
+            @if(!empty($lokasiSampel))
+            <tr>
+                <td class="spu-label">Lokasi Sampel</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $lokasiSampel }}</td>
+            </tr>
+            @endif
             <tr>
                 <td class="spu-label">Anggaran</td>
                 <td class="spu-sep">:</td>
