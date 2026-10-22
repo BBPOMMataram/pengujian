@@ -21,38 +21,24 @@ jobs:
           port: ${{ secrets.SSH_PORT || 56710 }}
           key: ${{ secrets.SSH_KEY }}
           debug: true
-          script_stop: false
           script: |
             echo "=== [Deploy] Target Directory Setup ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
 
+            APP_DIR="/home/pengujian.bbpommataram.id/PENGUJIAN"
             REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git"
 
-            # Check candidate directories matching exact cPanel path: "home/pengujian.bbpommataram.id/PENGUJIAN"
-            APP_DIR=""
-            for p in \
-                "$HOME/pengujian.bbpommataram.id/PENGUJIAN" \
-                "/home/pengujian.bbpommataram.id/PENGUJIAN" \
-                "$HOME/pengujian.bbpommataram.id" \
-                "$HOME/PENGUJIAN" \
-                "/home/bbpommataram.id/pengujian.bbpommataram.id/PENGUJIAN" \
-                "/home/bbpommataram.id/PENGUJIAN"; do
-                if [ -d "$p" ]; then
-                    APP_DIR="$p"
-                    echo "[Deploy] Found existing app directory: $APP_DIR"
-                    break
-                fi
-            done
-
-            if [ -z "$APP_DIR" ]; then
-                APP_DIR="$HOME/pengujian.bbpommataram.id/PENGUJIAN"
-                if ! mkdir -p "$APP_DIR" 2>/dev/null; then
+            # Pastikan direktori target ada
+            if ! mkdir -p "$APP_DIR" 2>/dev/null; then
+                if [ -d "/home/bbpommataram.id" ] && [ -w "/home/bbpommataram.id" ]; then
+                    APP_DIR="/home/bbpommataram.id/PENGUJIAN"
+                else
                     APP_DIR="$HOME/PENGUJIAN"
-                    mkdir -p "$APP_DIR"
                 fi
+                mkdir -p "$APP_DIR"
             fi
 
-            echo "[Deploy] Using primary APP_DIR: $APP_DIR"
+            echo "[Deploy] Using APP_DIR: $APP_DIR"
             cd "$APP_DIR" || exit 1
 
             # Inisialisasi git jika folder belum memiliki .git (mengatasi 'fatal: not a git repository')
@@ -123,13 +109,11 @@ jobs:
             echo "[Deploy] Running migrations..."
             php artisan migrate --force || exit 1
 
-            echo "[Deploy] Clearing and refreshing caches..."
+            echo "[Deploy] Optimizing caches..."
             php artisan optimize:clear || exit 1
-            rm -f storage/framework/views/*.php 2>/dev/null || true
-            php artisan config:clear || true
-            php artisan route:clear || true
-            php artisan view:clear || true
-            php artisan cache:clear || true
+            php artisan config:cache || true
+            php artisan route:cache || true
+            php artisan view:cache || true
 
             echo "[Deploy] Linking storage..."
             php artisan storage:link 2>/dev/null || true
@@ -147,23 +131,7 @@ jobs:
             touch storage/logs/laravel.log 2>/dev/null || true
             chmod 664 storage/logs/laravel.log 2>/dev/null || true
 
-            # Touch public/index.php & restart LiteSpeed PHP runner to bust opcode cache
+            # Touch public/index.php to reload LiteSpeed / PHP-FPM opcache
             touch public/index.php 2>/dev/null || true
-            touch "$APP_DIR/.lsphp_restart" 2>/dev/null || true
-            touch "$APP_DIR/public/.lsphp_restart" 2>/dev/null || true
-            (pkill -u "$SERVER_USER" -f lsphp || true) 2>/dev/null || true
-
-            # Sinkronkan views & code ke direktori pengujian sekunder jika ada
-            for other in "$HOME/pengujian.bbpommataram.id" "$HOME/PENGUJIAN" "$HOME/pengujian.bbpommataram.id/PENGUJIAN" "/home/bbpom9725/pengujian.bbpommataram.id"; do
-                if [ -d "$other" ] && [ "$other" != "$APP_DIR" ]; then
-                    echo "[Deploy] Syncing code to secondary directory: $other..."
-                    cp -r resources "$other/" 2>/dev/null || true
-                    cp -r app "$other/" 2>/dev/null || true
-                    cp -r routes "$other/" 2>/dev/null || true
-                    rm -f "$other/storage/framework/views/"*.php 2>/dev/null || true
-                    touch "$other/public/index.php" 2>/dev/null || true
-                    touch "$other/public/.lsphp_restart" 2>/dev/null || true
-                fi
-            done
 
             echo "=== [Deploy] Successfully deployed to https://pengujian.bbpommataram.id ✅ ==="
