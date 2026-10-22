@@ -30,14 +30,14 @@ return new class extends Migration
         $defaults = [
             [
                 'kode_lokasi' => 'K',
-                'name' => 'Lab Kimia',
+                'name' => 'Kimia',
                 'keterangan' => 'Laboratorium Pengujian Kimia',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'kode_lokasi' => 'M',
-                'name' => 'Lab Mikro',
+                'name' => 'Mikro',
                 'keterangan' => 'Laboratorium Pengujian Mikrobiologi',
                 'created_at' => now(),
                 'updated_at' => now(),

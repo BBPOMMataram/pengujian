@@ -85,17 +85,16 @@ class PdfImportService
     }
 
     /**
-     * Parse and decode code like 'K1 M0 R1' STRICTLY from Catatan into human readable Lokasi Sampel:
-     * K = Lab Kimia, M = Lab Mikro, R = Retensi.
-     * Uses master data from 'lokasi_sampel' table if available.
-     * If Catatan is empty or has no K/M/R code, returns '-'.
+     * Parse and decode code like 'K1 M0 R1' from Catatan into human readable Lokasi Sampel:
+     * - If Catatan is empty:
+     *     - If jenis sampel / komoditi is Narkotika: returns master name for 'K' (e.g. 'Kimia').
+     *     - Besides Narkotika: returns '-'.
+     * - If Catatan is provided (e.g. 'K1 M0 R1'):
+     *     - Decodes K, M, R counts. Only includes items with count > 0 (0 is omitted).
+     *     - Example: 'K1 M0 R1' -> 'Kimia 1 Sampel dan Retensi 1 Sampel' (Mikro omitted because 0).
      */
-    public function parseLokasiSampel(?string $catatan): string
+    public function parseLokasiSampel(?string $catatan, ?string $jenisSampel = null, ?string $komoditi = null): string
     {
-        if (empty($catatan) || trim($catatan) === '-' || trim($catatan) === '') {
-            return '-';
-        }
-
         // Cache or load master names from master table lokasi_sampel
         static $masterNames = null;
         if ($masterNames === null) {
@@ -110,46 +109,87 @@ class PdfImportService
             }
             if (empty($masterNames)) {
                 $masterNames = [
-                    'K' => 'Lab Kimia',
-                    'M' => 'Lab Mikro',
+                    'K' => 'Kimia',
+                    'M' => 'Mikro',
                     'R' => 'Retensi',
                 ];
             }
         }
 
+        $isNarkotika = false;
+        if (!empty($jenisSampel) && preg_match('/narkotika/i', $jenisSampel)) {
+            $isNarkotika = true;
+        } elseif (!empty($komoditi) && preg_match('/narkotika/i', $komoditi)) {
+            $isNarkotika = true;
+        }
+
+        $cleanCatatan = trim($catatan ?? '');
+
+        // 1. Jika catatan kosong / strip '-'
+        if ($cleanCatatan === '' || $cleanCatatan === '-') {
+            if ($isNarkotika) {
+                // If catatan kosong & jenis sampel narkotika -> K / Kimia
+                return $masterNames['K'] ?? 'Kimia';
+            }
+            // Selain narkotika -> '-'
+            return '-';
+        }
+
+        // 2. Jika catatan ada isinya, periksa apakah ada kode K/M/R
         $parts = [];
-        $found = false;
+        $hasKmrCode = false;
 
-        // K = Kimia (e.g. K1 -> Lab Kimia 1 Sampel, K2 -> Lab Kimia 2 Sampel, K0 -> Lab Kimia 0 Sampel)
-        if (preg_match('/(?:^|[\s,;])K\s*[:=]?\s*(\d+)/i', $catatan, $km)) {
+        // K = Kimia (e.g. K1 -> Kimia 1 Sampel; jika K0 tidak ditulis)
+        if (preg_match('/(?:^|[\s,;])K\s*[:=]?\s*(\d+)/i', $cleanCatatan, $km)) {
             $count = (int) $km[1];
-            $name = $masterNames['K'] ?? 'Lab Kimia';
-            $parts[] = "{$name} {$count} Sampel";
-            $found = true;
+            if ($count > 0) {
+                $name = $masterNames['K'] ?? 'Kimia';
+                $parts[] = "{$name} {$count} Sampel";
+            }
+            $hasKmrCode = true;
         }
 
-        // M = Mikro (e.g. M0 -> Lab Mikro 0 Sampel, M1 -> Lab Mikro 1 Sampel)
-        if (preg_match('/(?:^|[\s,;])M\s*[:=]?\s*(\d+)/i', $catatan, $mm)) {
+        // M = Mikro (e.g. M1 -> Mikro 1 Sampel; jika M0 tidak ditulis)
+        if (preg_match('/(?:^|[\s,;])M\s*[:=]?\s*(\d+)/i', $cleanCatatan, $mm)) {
             $count = (int) $mm[1];
-            $name = $masterNames['M'] ?? 'Lab Mikro';
-            $parts[] = "{$name} {$count} Sampel";
-            $found = true;
+            if ($count > 0) {
+                $name = $masterNames['M'] ?? 'Mikro';
+                $parts[] = "{$name} {$count} Sampel";
+            }
+            $hasKmrCode = true;
         }
 
-        // R = Retensi (e.g. R1 -> Retensi 1 Sampel, R0 -> Retensi 0 Sampel)
-        if (preg_match('/(?:^|[\s,;])R\s*[:=]?\s*(\d+)/i', $catatan, $rm)) {
+        // R = Retensi (e.g. R1 -> Retensi 1 Sampel; jika R0 tidak ditulis)
+        if (preg_match('/(?:^|[\s,;])R\s*[:=]?\s*(\d+)/i', $cleanCatatan, $rm)) {
             $count = (int) $rm[1];
-            $name = $masterNames['R'] ?? 'Retensi';
-            $parts[] = "{$name} {$count} Sampel";
-            $found = true;
+            if ($count > 0) {
+                $name = $masterNames['R'] ?? 'Retensi';
+                $parts[] = "{$name} {$count} Sampel";
+            }
+            $hasKmrCode = true;
         }
 
-        if ($found && !empty($parts)) {
-            return implode(', ', $parts);
+        if ($hasKmrCode) {
+            if (!empty($parts)) {
+                if (count($parts) === 1) {
+                    return $parts[0];
+                }
+                if (count($parts) === 2) {
+                    return $parts[0] . ' dan ' . $parts[1];
+                }
+                $last = array_pop($parts);
+                return implode(', ', $parts) . ' dan ' . $last;
+            }
+
+            // Jika ada kode K/M/R tapi semuanya bernilai 0 (misal K0 M0 R0)
+            if ($isNarkotika) {
+                return $masterNames['K'] ?? 'Kimia';
+            }
+            return '-';
         }
 
-        // If Catatan does not contain K/M/R codes, return '-'
-        return '-';
+        // Jika catatan berupa teks biasa non K/M/R
+        return $cleanCatatan;
     }
 
     /**
@@ -254,7 +294,8 @@ class PdfImportService
                         }
                     }
                 }
-                $lokasiSampel = $this->parseLokasiSampel($catatan);
+                $komoditi = $this->mapKomoditi($jenisSampel);
+                $lokasiSampel = $this->parseLokasiSampel($catatan, $jenisSampel, $komoditi);
 
                 $keteranganSampling = '';
                 if (preg_match('/(Plastik|Kardus|Botol|Aluminium|Kemasan|Amplop|Klip)[^•\n]+(?:\n[ \t]*[^•\n]+)*/i', $body, $sm)) {
@@ -355,14 +396,15 @@ class PdfImportService
                         $samples[$code]['nama_produk'] = $namaSampel;
                     }
                 } else {
+                    $komoditiMapped = $this->mapKomoditi($komoditiLampiran);
                     $samples[$code] = [
                         'row_no' => $lIdx++,
                         'kode_sampel' => $code,
                         'nama_produk' => $namaSampel ?: 'Sampel Uji ' . $code,
                         'nie' => '-',
                         'jenis_sampel' => $komoditiLampiran ?: 'Narkotika',
-                        'komoditi' => $this->mapKomoditi($komoditiLampiran),
-                        'lokasi_sampel' => '-',
+                        'komoditi' => $komoditiMapped,
+                        'lokasi_sampel' => $this->parseLokasiSampel('-', $komoditiLampiran ?: 'Narkotika', $komoditiMapped),
                         'bentuk_sediaan' => $bentukSediaan,
                         'netto' => $netto,
                     ];
@@ -383,7 +425,7 @@ class PdfImportService
                         'nie' => '-',
                         'jenis_sampel' => 'Narkotika',
                         'komoditi' => 'Narkotika',
-                        'lokasi_sampel' => '-',
+                        'lokasi_sampel' => $this->parseLokasiSampel('-', 'Narkotika', 'Narkotika'),
                     ];
                 }
             }
