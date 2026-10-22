@@ -17,3 +17,4 @@ class LokasiSampel extends Model
         'keterangan',
     ];
 }
+
