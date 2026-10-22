@@ -28,24 +28,21 @@ jobs:
             APP_DIR="/home/bbpommataram.id/PENGUJIAN"
             REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git"
 
-            # 1. Pastikan folder target dan git repository sudah siap
-            if [ ! -d "$APP_DIR" ]; then
-                echo "[Deploy] Directory $APP_DIR does not exist. Creating..."
-                mkdir -p "$APP_DIR"
-            fi
+            # 1. Pastikan direktori target ada
+            mkdir -p "$APP_DIR"
 
-            # Jika sebelumnya sempat di-clone ke /home/bbpommataram.id/pengujian.bbpommataram.id, salin filenya
-            OLD_CLONE="/home/bbpommataram.id/pengujian.bbpommataram.id"
-            if [ -d "$OLD_CLONE/.git" ] && [ ! -d "$APP_DIR/.git" ]; then
-                echo "[Deploy] Migrating repository from $OLD_CLONE to $APP_DIR..."
-                cp -a "$OLD_CLONE/." "$APP_DIR/" 2>/dev/null || true
+            # 2. Jika clone sebelumnya ada di /home/bbpommataram.id/pengujian.bbpommataram.id dan target belum ada .git
+            OLD_DIR="/home/bbpommataram.id/pengujian.bbpommataram.id"
+            if [ -d "$OLD_DIR/.git" ] && [ ! -d "$APP_DIR/.git" ]; then
+                echo "[Deploy] Migrating existing repository from $OLD_DIR to $APP_DIR..."
+                cp -a "$OLD_DIR/." "$APP_DIR/" 2>/dev/null || true
             fi
 
             cd "$APP_DIR" || exit 1
 
-            # Inisialisasi git jika belum ada .git di $APP_DIR
+            # 3. Inisialisasi git jika folder belum memiliki .git (mengatasi 'fatal: not a git repository')
             if [ ! -d "$APP_DIR/.git" ]; then
-                echo "[Deploy] Initializing git repository in $APP_DIR..."
+                echo "[Deploy] Initializing git in $APP_DIR..."
                 git init
                 git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
             else
@@ -69,48 +66,55 @@ jobs:
 
             echo "[Deploy] Configuring .env..."
             if [ ! -f "$APP_DIR/.env" ]; then
-                if [ -f "$OLD_CLONE/.env" ]; then
-                    echo "[Deploy] Copying .env from $OLD_CLONE..."
-                    cp "$OLD_CLONE/.env" "$APP_DIR/.env"
+                if [ -f "$OLD_DIR/.env" ]; then
+                    echo "[Deploy] Copying .env from $OLD_DIR..."
+                    cp "$OLD_DIR/.env" "$APP_DIR/.env"
                 else
                     echo "[Deploy] Creating .env from .env.example..."
                     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
                 fi
             fi
 
-            # Ensure APP_URL is correctly pointed to pengujian.bbpommataram.id
+            # Set APP_URL
             if grep -q "^APP_URL=" "$APP_DIR/.env"; then
                 sed -i "s|^APP_URL=.*|APP_URL=https://pengujian.bbpommataram.id|" "$APP_DIR/.env"
             else
                 echo "APP_URL=https://pengujian.bbpommataram.id" >> "$APP_DIR/.env"
             fi
 
-            # Ensure production settings
+            # Set APP_ENV dan APP_DEBUG
             sed -i "s|^APP_ENV=.*|APP_ENV=production|" "$APP_DIR/.env" 2>/dev/null || true
             sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" "$APP_DIR/.env" 2>/dev/null || true
 
-            # Ensure SQLite database exists if SQLite connection is used
+            # Buat folder framework yang dibutuhkan Laravel jika belum ada
+            mkdir -p "$APP_DIR/storage/framework/cache/data"
+            mkdir -p "$APP_DIR/storage/framework/sessions"
+            mkdir -p "$APP_DIR/storage/framework/views"
+            mkdir -p "$APP_DIR/storage/logs"
+            mkdir -p "$APP_DIR/bootstrap/cache"
+            mkdir -p "$APP_DIR/database"
+
+            # Pastikan file SQLite database ada
             if grep -q "^DB_CONNECTION=sqlite" "$APP_DIR/.env" || ! grep -q "^DB_CONNECTION=" "$APP_DIR/.env"; then
-                mkdir -p "$APP_DIR/database"
-                if [ -f "$OLD_CLONE/database/database.sqlite" ] && [ ! -f "$APP_DIR/database/database.sqlite" ]; then
-                    cp "$OLD_CLONE/database/database.sqlite" "$APP_DIR/database/database.sqlite"
+                if [ -f "$OLD_DIR/database/database.sqlite" ] && [ ! -f "$APP_DIR/database/database.sqlite" ]; then
+                    cp "$OLD_DIR/database/database.sqlite" "$APP_DIR/database/database.sqlite"
                 else
                     touch "$APP_DIR/database/database.sqlite"
                 fi
                 echo "[Deploy] SQLite database verified at $APP_DIR/database/database.sqlite"
             fi
 
-            # Salin vendor jika ada di folder lama untuk mempercepat composer
-            if [ -d "$OLD_CLONE/vendor" ] && [ ! -d "$APP_DIR/vendor" ]; then
-                echo "[Deploy] Reusing vendor from $OLD_CLONE..."
-                cp -a "$OLD_CLONE/vendor" "$APP_DIR/" 2>/dev/null || true
+            # Salin vendor jika ada di folder lama agar composer tidak perlu unduh ulang semuanya
+            if [ -d "$OLD_DIR/vendor" ] && [ ! -d "$APP_DIR/vendor" ]; then
+                echo "[Deploy] Reusing vendor from $OLD_DIR..."
+                cp -a "$OLD_DIR/vendor" "$APP_DIR/" 2>/dev/null || true
             fi
 
             echo "[Deploy] Installing Composer dependencies..."
             export COMPOSER_ALLOW_SUPERUSER=1
             composer install --no-dev --prefer-dist --no-interaction --no-ansi --optimize-autoloader || exit 1
 
-            # Ensure APP_KEY exists
+            # Pastikan APP_KEY terisi
             if ! grep -q "^APP_KEY=base64:" "$APP_DIR/.env"; then
                 echo "[Deploy] Generating application key..."
                 php artisan key:generate --force || true
@@ -128,8 +132,7 @@ jobs:
             echo "[Deploy] Linking storage..."
             php artisan storage:link 2>/dev/null || true
 
-            echo "[Deploy] Configuring Web Server & .htaccess..."
-            # Pastikan .htaccess di root folder ada untuk mengarahkan ke public/ jika Document Root cPanel ke root
+            echo "[Deploy] Configuring Web Server .htaccess..."
             cat << 'HTACCESS_EOF' > "$APP_DIR/.htaccess"
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
@@ -153,7 +156,7 @@ jobs:
 </IfModule>
 HTACCESS_EOF
 
-            # Buat symlink dari document root umum cPanel ke $APP_DIR/public agar tidak 404
+            # Buat symlink dari document root umum cPanel ke $APP_DIR/public
             if [ -d "/home/bbpommataram.id/public_html" ]; then
                 ln -sfn "$APP_DIR/public" "/home/bbpommataram.id/public_html/pengujian" 2>/dev/null || true
                 ln -sfn "$APP_DIR/public" "/home/bbpommataram.id/public_html/PENGUJIAN" 2>/dev/null || true
@@ -164,21 +167,12 @@ HTACCESS_EOF
             SERVER_USER=$(whoami)
             chown -R "$SERVER_USER:$SERVER_USER" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database" 2>/dev/null || true
 
-            # Directory permissions (775 / 755)
-            find "$APP_DIR/storage" -type d -exec chmod 775 {} \; 2>/dev/null || true
-            find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \; 2>/dev/null || true
-
-            # File permissions (664 / 644)
-            find "$APP_DIR/storage" -type f -exec chmod 664 {} \; 2>/dev/null || true
-            find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \; 2>/dev/null || true
-
-            # SQLite database permissions if present
+            # Berikan hak akses penuh ke storage, cache, dan database SQLite
+            chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database" 2>/dev/null || true
             if [ -f "$APP_DIR/database/database.sqlite" ]; then
                 chmod 664 "$APP_DIR/database/database.sqlite" 2>/dev/null || true
-                chmod 775 "$APP_DIR/database" 2>/dev/null || true
             fi
 
-            # Laravel log file
             touch "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
             chmod 664 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
 
