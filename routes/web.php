@@ -31,3 +31,33 @@ Route::get('/file-group/{fileGroupId}/pdf-merged', [PengujianController::class, 
 Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy');
 Route::post('/batch/{batchId}/delete', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy.post');
 Route::post('/clear-all', [PengujianController::class, 'clearAll'])->name('pengujian.clear');
+
+// Diagnostic routes
+Route::get('/debug-log', function () {
+    $logPath = storage_path('logs/laravel.log');
+    if (!file_exists($logPath)) {
+        return response('No log file found at ' . $logPath, 200, ['Content-Type' => 'text/plain']);
+    }
+    $lines = file($logPath);
+    $lastLines = array_slice($lines, -150);
+    return response(implode('', $lastLines), 200, ['Content-Type' => 'text/plain']);
+});
+
+Route::get('/debug-db', function () {
+    try {
+        $tables = \Illuminate\Support\Facades\DB::select("SELECT name FROM sqlite_master WHERE type='table'");
+        return response()->json([
+            'status' => 'DB connected',
+            'tables' => array_column($tables, 'name'),
+            'app_key' => config('app.key') ? 'set' : 'not set',
+            'database_path' => config('database.connections.sqlite.database'),
+            'storage_writable' => is_writable(storage_path()),
+            'views_writable' => is_writable(storage_path('framework/views')),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
+});
