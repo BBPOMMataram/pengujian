@@ -99,4 +99,39 @@ class PengujianTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('content-disposition');
     }
+
+    public function test_pdf_view_renders_spu_berita_acara_and_omits_qr_code()
+    {
+        $this->post('/load-sample');
+        $item = PengujianItem::first();
+
+        // Render blade view directly to inspect HTML content before PDF conversion
+        $singleHtml = view('pdf.laporan-pengujian', [
+            'item' => $item,
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ])->render();
+
+        $this->assertStringContainsString('SURAT PERMINTAAN UJI', $singleHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $singleHtml);
+        $this->assertStringContainsString('Komoditi', $singleHtml);
+        $this->assertStringContainsString('Anggaran', $singleHtml);
+        $this->assertStringContainsString('Asal Sampling', $singleHtml);
+        $this->assertStringNotContainsString('(Otomatis Di-generate)', $singleHtml);
+        $this->assertStringNotContainsString('data:image/svg+xml;base64', $singleHtml);
+
+        // Batch Tabular View
+        $items = PengujianItem::where('batch_id', $item->batch_id)->get();
+        $batchHtml = view('pdf.batch-pengujian', [
+            'items' => $items,
+            'headers' => array_keys($item->data),
+            'filename' => $item->filename,
+            'batchId' => $item->batch_id,
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ])->render();
+
+        $this->assertStringContainsString('SURAT PERMINTAAN UJI', $batchHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $batchHtml);
+        $this->assertStringNotContainsString('<th class="col-qr"', $batchHtml);
+        $this->assertStringNotContainsString('QR Code', $batchHtml);
+    }
 }

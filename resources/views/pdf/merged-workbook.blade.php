@@ -2,11 +2,11 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Lengkap Gabungan Seluruh Tab - {{ $filename }}</title>
+    <title>Surat Permintaan Uji (Gabungan Seluruh Tab) - {{ $filename }}</title>
     <style>
         @page {
             size: A4 {{ $orientation ?? 'landscape' }};
-            margin: 12mm 10mm 15mm 10mm;
+            margin: 10mm 10mm 12mm 10mm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
@@ -17,23 +17,18 @@
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .header-logo {
             width: 65px;
             text-align: center;
             vertical-align: middle;
         }
-        .header-logo-badge {
-            background-color: #03428e;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 11pt;
-            padding: 8px 4px;
-            border-radius: 6px;
-            text-align: center;
-            letter-spacing: 1px;
-            display: inline-block;
+        .header-logo-img {
+            max-width: 58px;
+            max-height: 58px;
+            display: block;
+            margin: 0 auto;
         }
         .header-text {
             text-align: center;
@@ -42,7 +37,7 @@
         }
         .header-text h3 {
             margin: 0;
-            font-size: 9.5pt;
+            font-size: 9pt;
             font-weight: normal;
             color: #0f172a;
             text-transform: uppercase;
@@ -52,7 +47,7 @@
             margin: 1px 0;
             font-size: 10.5pt;
             font-weight: bold;
-            color: #03428e;
+            color: #005baa;
             text-transform: uppercase;
         }
         .header-text h1 {
@@ -68,17 +63,22 @@
             color: #475569;
         }
         .double-line {
-            border-top: 2px solid #03428e;
-            border-bottom: 1px solid #03428e;
+            border-top: 2px solid #005baa;
+            border-bottom: 1px solid #005baa;
             height: 2px;
             margin-top: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-        .report-title-container {
+
+        /* FORMAT SPU & BERITA ACARA */
+        .spu-box {
+            margin-bottom: 8px;
+        }
+        .spu-title-box {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
-        .report-title {
+        .spu-title {
             font-size: 11pt;
             font-weight: bold;
             text-decoration: underline;
@@ -86,18 +86,39 @@
             margin: 0;
             text-transform: uppercase;
         }
-        .report-meta {
-            font-size: 7.5pt;
-            color: #475569;
+        .spu-no {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #005baa;
             margin-top: 2px;
         }
-        .meta-pill {
-            display: inline-block;
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 1px 6px;
-            margin: 0 2px;
+        .spu-preamble-text {
+            font-size: 8pt;
+            color: #1e293b;
+            margin: 4px 0;
+        }
+        .spu-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-bottom: 6px;
+        }
+        .spu-meta-table td {
+            padding: 1.5px 0;
+            vertical-align: top;
+        }
+        .spu-label {
+            width: 100px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .spu-sep {
+            width: 12px;
+            text-align: center;
+            color: #64748b;
+        }
+        .spu-val {
+            color: #0f172a;
             font-weight: 600;
         }
 
@@ -105,13 +126,13 @@
         .sheet-section-title {
             background-color: #eff6ff;
             border: 1px solid #bfdbfe;
-            border-left: 4px solid #03428e;
-            padding: 5px 8px;
-            margin-top: 10px;
-            margin-bottom: 8px;
-            font-size: 9pt;
+            border-left: 4px solid #005baa;
+            padding: 4px 8px;
+            margin-top: 8px;
+            margin-bottom: 6px;
+            font-size: 8.5pt;
             font-weight: bold;
-            color: #03428e;
+            color: #005baa;
         }
 
         /* DATA TABULAR GRID */
@@ -119,16 +140,16 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .tabular-table th {
-            background-color: #03428e;
+            background-color: #005baa;
             color: #ffffff;
             font-size: {{ $headerFontSize ?? '7.5pt' }};
             font-weight: bold;
             padding: 5px 4px;
             text-align: left;
-            border: 1px solid #02336e;
+            border: 1px solid #004b8d;
             text-transform: uppercase;
             word-wrap: break-word;
             word-break: break-all;
@@ -137,11 +158,6 @@
         .tabular-table th.col-no {
             text-align: center;
             width: 28px;
-        }
-        .tabular-table th.col-qr {
-            text-align: center;
-            width: 55px;
-            background-color: #0f4c9c;
         }
         .tabular-table td {
             border: 1px solid #cbd5e1;
@@ -161,37 +177,22 @@
             font-family: monospace;
             color: #64748b;
         }
-        .tabular-table td.col-qr {
-            text-align: center;
-            padding: 2px;
-        }
 
         /* VERTICAL PER-ROW DATA TABLE (UNTUK SHEET > 15 KOLOM) */
-        .verification-box {
-            border: 1px solid #bfdbfe;
-            background-color: #f0f7ff;
-            border-radius: 6px;
-            padding: 6px 10px;
-            margin-bottom: 8px;
-        }
-        .verification-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
         .vertical-data-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-size: 7.5pt;
         }
         .vertical-data-table th {
-            background-color: #03428e;
+            background-color: #005baa;
             color: #ffffff;
             font-weight: bold;
             text-align: left;
             padding: 4px 6px;
-            border: 1px solid #03428e;
+            border: 1px solid #004b8d;
             text-transform: uppercase;
         }
         .vertical-data-table td {
@@ -208,7 +209,7 @@
             color: #64748b;
         }
         .vertical-data-table td.col-param {
-            width: 200px;
+            width: 180px;
             font-weight: 600;
             color: #334155;
         }
@@ -259,22 +260,36 @@
             font-size: 6.5pt;
             color: #64748b;
             font-style: italic;
-            margin-top: 8px;
+            margin-top: 6px;
             text-align: center;
         }
     </style>
 </head>
 <body>
 
+    @php
+        $logoPath = public_path('images/logobbpom.png');
+        $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+
+        // Ambil info SPU default
+        $firstGroup = reset($sheetGroups);
+        $firstItemInGroup = $firstGroup && isset($firstGroup['items']) ? $firstGroup['items']->first() : null;
+        $gData = $firstItemInGroup && is_array($firstItemInGroup->data) ? $firstItemInGroup->data : [];
+        $spuNum = $gData['no_spu'] ?? $gData['spu'] ?? $gData['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
+        $komoditi = $gData['komoditi'] ?? 'Narkotika';
+        $anggaran = $gData['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $gData['asal_sampling'] ?? $gData['asal_sampel'] ?? 'Kepolisian';
+    @endphp
+
     <!-- KOP RESMI BBPOM -->
     <table class="header-table">
         <tr>
-            <td class="header-logo">
-                <div class="header-logo-badge">
-                    BADAN<br/>POM
-                </div>
-            </td>
-            <td class="header-text">
+            @if(!empty($logoBase64))
+                <td class="header-logo">
+                    <img src="data:image/png;base64,{{ $logoBase64 }}" class="header-logo-img" alt="Logo BBPOM" />
+                </td>
+            @endif
+            <td class="header-text" style="{{ empty($logoBase64) ? 'text-align: center; width: 100%;' : '' }}">
                 <h3>BADAN PENGAWAS OBAT DAN MAKANAN</h3>
                 <h2>BALAI BESAR PENGAWAS OBAT DAN MAKANAN DI MATARAM</h2>
                 <h1>LABORATORIUM PENGUJIAN TERPADU</h1>
@@ -285,51 +300,58 @@
 
     <div class="double-line"></div>
 
-    <!-- JUDUL LAPORAN GABUNGAN -->
-    <div class="report-title-container">
-        <h2 class="report-title">LAPORAN LENGKAP PENGUJIAN (GABUNGAN SELURUH TAB / SHEET)</h2>
-        <div class="report-meta">
-            File: <span class="meta-pill">{{ $filename }}</span>
-            | Total Tab: <span class="meta-pill">{{ count($sheetGroups) }} Tab</span>
-            | Total Keseluruhan: <span class="meta-pill">{{ $totalItems }} Sampel</span>
-            | Dicetak: <span class="meta-pill">{{ $printedAt }} WITA</span>
+    <!-- FORMAT BERITA ACARA SPU -->
+    <div class="spu-box">
+        <div class="spu-title-box">
+            <h2 class="spu-title">SURAT PERMINTAAN UJI (GABUNGAN SELURUH TAB)</h2>
+            <div class="spu-no">{{ $spuNum }}</div>
         </div>
+
+        <p class="spu-preamble-text">Bersama ini disampaikan daftar sampel:</p>
+        
+        <table class="spu-meta-table">
+            <tr>
+                <td class="spu-label">Komoditi</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $komoditi }}</td>
+                <td style="width: 25px;"></td>
+                <td class="spu-label">Anggaran</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $anggaran }}</td>
+                <td style="width: 25px;"></td>
+                <td class="spu-label">Asal Sampling</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $asalSampling }}</td>
+            </tr>
+        </table>
     </div>
 
     <!-- ITERASI SETIAP TAB / SHEET -->
     @foreach($sheetGroups as $sIdx => $group)
+        @php
+            $groupHeaders = [];
+            $hasNoCol = false;
+            foreach($group['headers'] as $h) {
+                $hl = strtolower(trim($h));
+                if (in_array($hl, ['no', 'nomor', 'no.'])) {
+                    $hasNoCol = true;
+                }
+                if (!str_contains($hl, 'qr')) {
+                    $groupHeaders[] = $h;
+                }
+            }
+        @endphp
+
         <div class="sheet-section-title">
             TAB {{ $sIdx + 1 }}: {{ strtoupper($group['sheet_name']) }} ({{ $group['items']->count() }} Sampel)
-            @if($group['layout'] === 'vertical')
-                <span style="font-size: 7.5pt; font-weight: normal; color: #475569;">&bull; Format: Detail Per-Baris ({{ count($group['headers']) }} Kolom)</span>
-            @endif
         </div>
 
         @if($group['layout'] === 'vertical')
-            <!-- JIKA KOLOM > 15: FORMAT VERTICAL PER BARIS DATA (PERSIS SEPERTI SCREENSHOT) -->
+            <!-- JIKA KOLOM > 15: FORMAT VERTICAL PER BARIS DATA -->
             @foreach($group['items'] as $item)
-                <div style="margin-bottom: 12px; page-break-inside: avoid;">
-                    <div class="verification-box">
-                        <table class="verification-table">
-                            <tr>
-                                <td style="vertical-align: middle;">
-                                    <div style="font-size: 9.5pt; font-weight: bold; color: #03428e;">
-                                        {{ $item->display_title ?: 'Sampel Pengujian' }}
-                                    </div>
-                                    <div style="font-size: 7.5pt; color: #475569; margin-top: 2px;">
-                                        Baris: #{{ $item->row_number }} &bull; Tab: {{ $group['sheet_name'] }}
-                                    </div>
-                                    <div style="font-size: 7pt; color: #047857; margin-top: 2px;">
-                                        <strong>Isi QR Code:</strong> {{ $item->qr_content ?: ($item->code ?: '-') }}
-                                    </div>
-                                </td>
-                                <td style="width: 75px; text-align: right; vertical-align: middle;">
-                                    @if(!empty($item->qr_base64))
-                                        <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="55" height="55" style="display: inline-block;" />
-                                    @endif
-                                </td>
-                            </tr>
-                        </table>
+                <div style="margin-bottom: 8px; page-break-inside: avoid;">
+                    <div style="font-size: 8pt; font-weight: bold; color: #005baa; margin-bottom: 2px;">
+                        Sampel #{{ $item->row_number }}: {{ $item->display_title ?: 'Sampel Pengujian' }}
                     </div>
 
                     <table class="vertical-data-table">
@@ -342,41 +364,41 @@
                         </thead>
                         <tbody>
                             @php $pIdx = 1; @endphp
-                            @foreach($group['headers'] as $h)
-                                <tr>
-                                    <td class="col-no">{{ $pIdx++ }}</td>
-                                    <td class="col-param">
-                                        @if(str_contains($h, ' - '))
-                                            @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
-                                            <span style="font-size: 6pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainH) }} &rsaquo;</span><br/>
-                                            <span>{{ str_replace('_', ' ', $subH) }}</span>
-                                        @else
-                                            {{ str_replace('_', ' ', $h) }}
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @php
-                                            $isQrCol = str_contains(strtolower($h), 'qr');
-                                            $val = $item->data[$h] ?? '-';
-                                        @endphp
-                                        @if($isQrCol)
-                                            <span style="color: #64748b; font-style: italic;">(Otomatis Di-generate)</span>
-                                        @elseif(is_bool($val))
-                                            {{ $val ? 'Ya' : 'Tidak' }}
-                                        @elseif(is_array($val))
-                                            {{ json_encode($val) }}
-                                        @else
-                                            @php $vLower = strtolower((string)$val); @endphp
-                                            @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
-                                                <span class="badge-ms">{{ $val }}</span>
-                                            @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
-                                                <span class="badge-tms">{{ $val }}</span>
+                            @foreach($groupHeaders as $h)
+                                @php
+                                    $val = $item->data[$h] ?? '-';
+                                    $vStr = is_string($val) ? strtolower($val) : '';
+                                @endphp
+                                @if(!str_contains($vStr, 'otomatis di-generate'))
+                                    <tr>
+                                        <td class="col-no">{{ $pIdx++ }}</td>
+                                        <td class="col-param">
+                                            @if(str_contains($h, ' - '))
+                                                @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
+                                                <span style="font-size: 6pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainH) }} &rsaquo;</span><br/>
+                                                <span>{{ str_replace('_', ' ', $subH) }}</span>
                                             @else
-                                                {{ $val !== '' ? $val : '-' }}
+                                                {{ str_replace('_', ' ', $h) }}
                                             @endif
-                                        @endif
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td>
+                                            @if(is_bool($val))
+                                                {{ $val ? 'Ya' : 'Tidak' }}
+                                            @elseif(is_array($val))
+                                                {{ json_encode($val) }}
+                                            @else
+                                                @php $vLower = strtolower((string)$val); @endphp
+                                                @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
+                                                    <span class="badge-ms">{{ $val }}</span>
+                                                @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
+                                                    <span class="badge-tms">{{ $val }}</span>
+                                                @else
+                                                    {{ $val !== '' ? $val : '-' }}
+                                                @endif
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         </tbody>
                     </table>
@@ -384,36 +406,20 @@
             @endforeach
 
         @else
-            <!-- JIKA KOLOM <= 15: FORMAT TABULAR GRID HORIZONTAL BIASA -->
-            @php
-                $hasNoCol = false;
-                $hasQrCol = false;
-                foreach($group['headers'] as $h) {
-                    $hl = strtolower(trim($h));
-                    if (in_array($hl, ['no', 'nomor', 'no.'])) {
-                        $hasNoCol = true;
-                    }
-                    if (str_contains($hl, 'qr')) {
-                        $hasQrCol = true;
-                    }
-                }
-            @endphp
+            <!-- JIKA KOLOM <= 15: FORMAT TABULAR GRID HORIZONTAL (TANPA QR CODE) -->
             <table class="tabular-table">
                 <thead>
                     <tr>
                         @if(!$hasNoCol)
                             <th class="col-no" style="width: 26px; text-align: center;">No</th>
                         @endif
-                        @foreach($group['headers'] as $h)
+                        @foreach($groupHeaders as $h)
                             @php
                                 $hLower = strtolower(trim($h));
-                                $isQr = str_contains($hLower, 'qr');
                                 $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
                             @endphp
 
-                            @if($isQr)
-                                <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
-                            @elseif($isNo)
+                            @if($isNo)
                                 <th class="col-no" style="width: 26px; text-align: center;">{{ $h }}</th>
                             @else
                                 <th>
@@ -427,9 +433,6 @@
                                 </th>
                             @endif
                         @endforeach
-                        @if(!$hasQrCol)
-                            <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
-                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -438,23 +441,14 @@
                             @if(!$hasNoCol)
                                 <td class="col-no">{{ $index + 1 }}</td>
                             @endif
-                            @foreach($group['headers'] as $h)
+                            @foreach($groupHeaders as $h)
                                 @php
                                     $hLower = strtolower(trim($h));
-                                    $isQr = str_contains($hLower, 'qr');
                                     $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
                                     $val = $item->data[$h] ?? '-';
                                 @endphp
 
-                                @if($isQr)
-                                    <td class="col-qr" style="text-align: center; vertical-align: middle;">
-                                        @if(!empty($item->qr_base64))
-                                            <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
-                                        @else
-                                            <span style="font-size: 6pt; color: #64748b;">(QR)</span>
-                                        @endif
-                                    </td>
-                                @elseif($isNo)
+                                @if($isNo)
                                     <td class="col-no">{{ $val !== '' ? $val : ($index + 1) }}</td>
                                 @else
                                     <td>
@@ -465,8 +459,13 @@
                                         @elseif(is_null($val) || $val === '')
                                             <span style="color: #94a3b8;">-</span>
                                         @else
-                                            @php $vLower = strtolower((string)$val); @endphp
-                                            @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
+                                            @php 
+                                                $vStr = (string)$val;
+                                                $vLower = strtolower($vStr);
+                                            @endphp
+                                            @if(str_contains($vLower, 'otomatis di-generate'))
+                                                <span style="color: #94a3b8;">-</span>
+                                            @elseif(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
                                                 <span class="badge-ms">{{ $val }}</span>
                                             @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
                                                 <span class="badge-tms">{{ $val }}</span>
@@ -477,15 +476,6 @@
                                     </td>
                                 @endif
                             @endforeach
-                            @if(!$hasQrCol)
-                                <td class="col-qr" style="text-align: center; vertical-align: middle;">
-                                    @if(!empty($item->qr_base64))
-                                        <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
-                                    @else
-                                        <span style="font-size: 6pt; color: #64748b;">(QR)</span>
-                                    @endif
-                                </td>
-                            @endif
                         </tr>
                     @endforeach
                 </tbody>
@@ -518,7 +508,7 @@
     </table>
 
     <div class="footer-note">
-        Dokumen ini merupakan laporan hasil pengujian gabungan seluruh tab dari satu file workbook terpadu BBPOM di Mataram.
+        Dokumen ini merupakan Surat Permintaan Uji resmi gabungan seluruh tab dari satu file workbook terpadu BBPOM di Mataram.
     </div>
 
 </body>

@@ -2,11 +2,11 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Tabular Pengujian - {{ $filename }}</title>
+    <title>Surat Permintaan Uji - {{ $filename }}</title>
     <style>
         @page {
             size: A4 {{ $orientation ?? 'landscape' }};
-            margin: 10mm 8mm 12mm 8mm;
+            margin: 10mm 10mm 12mm 10mm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
@@ -17,23 +17,18 @@
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .header-logo {
             width: 65px;
             text-align: center;
             vertical-align: middle;
         }
-        .header-logo-badge {
-            background-color: #03428e;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 11pt;
-            padding: 8px 4px;
-            border-radius: 6px;
-            text-align: center;
-            letter-spacing: 1px;
-            display: inline-block;
+        .header-logo-img {
+            max-width: 58px;
+            max-height: 58px;
+            display: block;
+            margin: 0 auto;
         }
         .header-text {
             text-align: center;
@@ -42,7 +37,7 @@
         }
         .header-text h3 {
             margin: 0;
-            font-size: 9.5pt;
+            font-size: 9pt;
             font-weight: normal;
             color: #0f172a;
             text-transform: uppercase;
@@ -52,7 +47,7 @@
             margin: 1px 0;
             font-size: 10.5pt;
             font-weight: bold;
-            color: #03428e;
+            color: #005baa;
             text-transform: uppercase;
         }
         .header-text h1 {
@@ -68,17 +63,22 @@
             color: #475569;
         }
         .double-line {
-            border-top: 2px solid #03428e;
-            border-bottom: 1px solid #03428e;
+            border-top: 2px solid #005baa;
+            border-bottom: 1px solid #005baa;
             height: 2px;
             margin-top: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-        .report-title-container {
+
+        /* FORMAT SPU & BERITA ACARA */
+        .spu-box {
+            margin-bottom: 8px;
+        }
+        .spu-title-box {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
-        .report-title {
+        .spu-title {
             font-size: 11pt;
             font-weight: bold;
             text-decoration: underline;
@@ -86,37 +86,58 @@
             margin: 0;
             text-transform: uppercase;
         }
-        .report-meta {
-            font-size: 7.5pt;
-            color: #475569;
+        .spu-no {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #005baa;
             margin-top: 2px;
         }
-        .meta-pill {
-            display: inline-block;
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 1px 6px;
-            margin: 0 2px;
+        .spu-preamble-text {
+            font-size: 8pt;
+            color: #1e293b;
+            margin: 4px 0;
+        }
+        .spu-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-bottom: 6px;
+        }
+        .spu-meta-table td {
+            padding: 1.5px 0;
+            vertical-align: top;
+        }
+        .spu-label {
+            width: 100px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .spu-sep {
+            width: 12px;
+            text-align: center;
+            color: #64748b;
+        }
+        .spu-val {
+            color: #0f172a;
             font-weight: 600;
         }
 
-        /* DATA TABULAR GRID DENGAN HEADER DARI EXCEL */
+        /* DATA TABULAR GRID */
         .tabular-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 6px;
-            margin-bottom: 12px;
+            margin-top: 4px;
+            margin-bottom: 10px;
         }
         .tabular-table th {
-            background-color: #03428e;
+            background-color: #005baa;
             color: #ffffff;
             font-size: {{ $headerFontSize ?? '7.5pt' }};
             font-weight: bold;
             padding: 5px 4px;
             text-align: left;
-            border: 1px solid #02336e;
+            border: 1px solid #004b8d;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             word-wrap: break-word;
@@ -126,11 +147,6 @@
         .tabular-table th.col-no {
             text-align: center;
             width: 28px;
-        }
-        .tabular-table th.col-qr {
-            text-align: center;
-            width: 55px;
-            background-color: #0f4c9c;
         }
         .tabular-table td {
             border: 1px solid #cbd5e1;
@@ -149,10 +165,6 @@
             text-align: center;
             font-family: monospace;
             color: #64748b;
-        }
-        .tabular-table td.col-qr {
-            text-align: center;
-            padding: 2px;
         }
 
         /* Status Pills */
@@ -179,7 +191,7 @@
         .sign-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 14px;
+            margin-top: 12px;
             page-break-inside: avoid;
         }
         .sign-table td {
@@ -194,22 +206,48 @@
             font-size: 6.5pt;
             color: #64748b;
             font-style: italic;
-            margin-top: 8px;
+            margin-top: 6px;
             text-align: center;
         }
     </style>
 </head>
 <body>
 
+    @php
+        $logoPath = public_path('images/logobbpom.png');
+        $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+
+        // Ambil data pertama untuk membaca informasi SPU jika ada
+        $firstItem = $items->first();
+        $firstData = $firstItem && is_array($firstItem->data) ? $firstItem->data : [];
+        $spuNum = $firstData['no_spu'] ?? $firstData['spu'] ?? $firstData['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
+        $komoditi = $firstData['komoditi'] ?? 'Narkotika';
+        $anggaran = $firstData['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $firstData['asal_sampling'] ?? $firstData['asal_sampel'] ?? 'Kepolisian';
+
+        // Filter out kolom QR Code
+        $filteredHeaders = [];
+        $hasNoCol = false;
+        foreach($headers as $h) {
+            $hl = strtolower(trim($h));
+            if (in_array($hl, ['no', 'nomor', 'no.'])) {
+                $hasNoCol = true;
+            }
+            if (!str_contains($hl, 'qr')) {
+                $filteredHeaders[] = $h;
+            }
+        }
+    @endphp
+
     <!-- KOP RESMI BBPOM -->
     <table class="header-table">
         <tr>
-            <td class="header-logo">
-                <div class="header-logo-badge">
-                    BADAN<br/>POM
-                </div>
-            </td>
-            <td class="header-text">
+            @if(!empty($logoBase64))
+                <td class="header-logo">
+                    <img src="data:image/png;base64,{{ $logoBase64 }}" class="header-logo-img" alt="Logo BBPOM" />
+                </td>
+            @endif
+            <td class="header-text" style="{{ empty($logoBase64) ? 'text-align: center; width: 100%;' : '' }}">
                 <h3>BADAN PENGAWAS OBAT DAN MAKANAN</h3>
                 <h2>BALAI BESAR PENGAWAS OBAT DAN MAKANAN DI MATARAM</h2>
                 <h1>LABORATORIUM PENGUJIAN TERPADU</h1>
@@ -220,34 +258,33 @@
 
     <div class="double-line"></div>
 
-    <!-- JUDUL DOKUMEN & METADATA -->
-    <div class="report-title-container">
-        <h2 class="report-title">LAPORAN HASIL PENGUJIAN SAMPEL</h2>
-        <div class="report-meta">
-            File: <span class="meta-pill">{{ $filename }}</span>
-            @if(!empty($sheetName) && $sheetName !== 'Sheet1' && $sheetName !== 'Worksheet')
-                | Sumber/Tab: <span class="meta-pill" style="color: #03428e; background-color: #eff6ff; border-color: #bfdbfe;">{{ $sheetName }}</span>
-            @endif
-            | Jumlah Data: <span class="meta-pill">{{ $items->count() }} Sampel</span>
-            | Dicetak: <span class="meta-pill">{{ $printedAt }} WITA</span>
+    <!-- FORMAT BERITA ACARA SPU -->
+    <div class="spu-box">
+        <div class="spu-title-box">
+            <h2 class="spu-title">SURAT PERMINTAAN UJI</h2>
+            <div class="spu-no">{{ $spuNum }}</div>
         </div>
+
+        <p class="spu-preamble-text">Bersama ini disampaikan daftar sampel:</p>
+        
+        <table class="spu-meta-table">
+            <tr>
+                <td class="spu-label">Komoditi</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $komoditi }}</td>
+                <td style="width: 25px;"></td>
+                <td class="spu-label">Anggaran</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $anggaran }}</td>
+                <td style="width: 25px;"></td>
+                <td class="spu-label">Asal Sampling</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $asalSampling }}</td>
+            </tr>
+        </table>
     </div>
 
-    @php
-        $hasNoCol = false;
-        $hasQrCol = false;
-        foreach($headers as $h) {
-            $hl = strtolower(trim($h));
-            if (in_array($hl, ['no', 'nomor', 'no.'])) {
-                $hasNoCol = true;
-            }
-            if (str_contains($hl, 'qr')) {
-                $hasQrCol = true;
-            }
-        }
-    @endphp
-
-    <!-- TABEL UTAMA: HEADERS DARI TABEL MENJADI HEADER KOLOM TABEL PDF -->
+    <!-- TABEL UTAMA: HEADERS DARI TABEL MENJADI HEADER KOLOM TABEL PDF (TANPA QR CODE) -->
     <table class="tabular-table">
         <thead>
             <tr>
@@ -255,16 +292,13 @@
                     <th class="col-no" style="width: 26px; text-align: center;">No</th>
                 @endif
                 
-                @foreach($headers as $h)
+                @foreach($filteredHeaders as $h)
                     @php
                         $hLower = strtolower(trim($h));
-                        $isQr = str_contains($hLower, 'qr');
                         $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
                     @endphp
 
-                    @if($isQr)
-                        <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
-                    @elseif($isNo)
+                    @if($isNo)
                         <th class="col-no" style="width: 26px; text-align: center;">{{ $h }}</th>
                     @else
                         <th>
@@ -278,10 +312,6 @@
                         </th>
                     @endif
                 @endforeach
-
-                @if(!$hasQrCol)
-                    <th class="col-qr" style="width: 52px; text-align: center;">QR Code</th>
-                @endif
             </tr>
         </thead>
         <tbody>
@@ -291,23 +321,14 @@
                         <td class="col-no">{{ $index + 1 }}</td>
                     @endif
 
-                    @foreach($headers as $h)
+                    @foreach($filteredHeaders as $h)
                         @php
                             $hLower = strtolower(trim($h));
-                            $isQr = str_contains($hLower, 'qr');
                             $isNo = in_array($hLower, ['no', 'nomor', 'no.']);
                             $val = $item->data[$h] ?? '-';
                         @endphp
 
-                        @if($isQr)
-                            <td class="col-qr" style="text-align: center; vertical-align: middle;">
-                                @if(!empty($item->qr_base64))
-                                    <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
-                                @else
-                                    <span style="font-size: 6pt; color: #64748b;">(QR)</span>
-                                @endif
-                            </td>
-                        @elseif($isNo)
+                        @if($isNo)
                             <td class="col-no">{{ $val !== '' ? $val : ($index + 1) }}</td>
                         @else
                             <td>
@@ -318,8 +339,13 @@
                                 @elseif(is_null($val) || $val === '')
                                     <span style="color: #94a3b8;">-</span>
                                 @else
-                                    @php $vLower = strtolower((string)$val); @endphp
-                                    @if(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
+                                    @php 
+                                        $vStr = (string)$val;
+                                        $vLower = strtolower($vStr);
+                                    @endphp
+                                    @if(str_contains($vLower, 'otomatis di-generate'))
+                                        <span style="color: #94a3b8;">-</span>
+                                    @elseif(str_contains($vLower, 'memenuhi syarat') || $vLower === 'ms')
                                         <span class="badge-ms">{{ $val }}</span>
                                     @elseif(str_contains($vLower, 'tidak memenuhi') || $vLower === 'tms')
                                         <span class="badge-tms">{{ $val }}</span>
@@ -330,16 +356,6 @@
                             </td>
                         @endif
                     @endforeach
-
-                    @if(!$hasQrCol)
-                        <td class="col-qr" style="text-align: center; vertical-align: middle;">
-                            @if(!empty($item->qr_base64))
-                                <img src="data:image/svg+xml;base64,{{ $item->qr_base64 }}" width="42" height="42" style="display: block; margin: 0 auto;" />
-                            @else
-                                <span style="font-size: 6pt; color: #64748b;">(QR)</span>
-                            @endif
-                        </td>
-                    @endif
                 </tr>
             @endforeach
         </tbody>
@@ -366,7 +382,7 @@
     </table>
 
     <div class="footer-note">
-        Dokumen ini dibuat otomatis oleh Sistem Pengujian Laboratorium BBPOM di Mataram. Seluruh QR Code memuat informasi hasil verifikasi data pengujian.
+        Dokumen ini dibuat otomatis oleh Sistem Pengujian Laboratorium BBPOM di Mataram. Seluruh data tercatat sah dan valid.
     </div>
 
 </body>

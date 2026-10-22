@@ -2,38 +2,33 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Pengujian - {{ $item->display_title }}</title>
+    <title>Surat Permintaan Uji - {{ $item->display_title }}</title>
     <style>
         @page {
-            margin: 20mm 15mm 20mm 15mm;
+            margin: 18mm 15mm 18mm 15mm;
             size: A4 portrait;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 11pt;
+            font-size: 10pt;
             color: #1e293b;
             line-height: 1.45;
         }
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .header-logo {
             width: 75px;
             text-align: center;
             vertical-align: middle;
         }
-        .header-logo-badge {
-            background-color: #03428e;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 13pt;
-            padding: 10px 6px;
-            border-radius: 8px;
-            text-align: center;
-            letter-spacing: 1px;
-            display: inline-block;
+        .header-logo-img {
+            max-width: 65px;
+            max-height: 65px;
+            display: block;
+            margin: 0 auto;
         }
         .header-text {
             text-align: center;
@@ -42,7 +37,7 @@
         }
         .header-text h3 {
             margin: 0;
-            font-size: 11pt;
+            font-size: 10pt;
             font-weight: normal;
             color: #0f172a;
             text-transform: uppercase;
@@ -50,36 +45,41 @@
         }
         .header-text h2 {
             margin: 2px 0;
-            font-size: 12pt;
+            font-size: 11.5pt;
             font-weight: bold;
-            color: #03428e;
+            color: #005baa;
             text-transform: uppercase;
         }
         .header-text h1 {
             margin: 2px 0;
-            font-size: 13pt;
+            font-size: 12.5pt;
             font-weight: bold;
             color: #0f172a;
             text-transform: uppercase;
         }
         .header-text p {
             margin: 3px 0 0 0;
-            font-size: 8pt;
+            font-size: 7.5pt;
             color: #475569;
         }
         .double-line {
-            border-top: 2px solid #03428e;
-            border-bottom: 1px solid #03428e;
+            border-top: 2px solid #005baa;
+            border-bottom: 1px solid #005baa;
             height: 2px;
             margin-top: 4px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
-        .doc-title-container {
+
+        /* FORMAT SPU & BERITA ACARA */
+        .spu-box {
+            margin-bottom: 14px;
+        }
+        .spu-title-box {
             text-align: center;
-            margin-bottom: 18px;
+            margin-bottom: 10px;
         }
-        .doc-title {
-            font-size: 13pt;
+        .spu-title {
+            font-size: 12pt;
             font-weight: bold;
             text-decoration: underline;
             color: #0f172a;
@@ -87,43 +87,52 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .doc-subtitle {
-            font-size: 9pt;
-            color: #64748b;
+        .spu-no {
+            font-size: 9.5pt;
+            font-weight: bold;
+            color: #005baa;
             margin-top: 3px;
         }
-        .verification-box {
-            border: 1px solid #bfdbfe;
-            background-color: #f0f7ff;
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-bottom: 18px;
-            width: 100%;
-            box-sizing: border-box;
+        .spu-preamble-text {
+            font-size: 9.5pt;
+            color: #1e293b;
+            margin: 8px 0 6px 0;
         }
-        .verification-table {
+        .spu-meta-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 9.5pt;
+            margin-bottom: 10px;
         }
-        .badge-verified {
-            background-color: #10b981;
-            color: #ffffff;
-            font-size: 8pt;
-            font-weight: bold;
-            padding: 3px 8px;
-            border-radius: 4px;
-            display: inline-block;
-            text-transform: uppercase;
+        .spu-meta-table td {
+            padding: 2.5px 0;
+            vertical-align: top;
         }
+        .spu-label {
+            width: 130px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .spu-sep {
+            width: 15px;
+            text-align: center;
+            color: #64748b;
+        }
+        .spu-val {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
         .section-heading {
-            font-size: 10pt;
+            font-size: 9.5pt;
             font-weight: bold;
-            color: #03428e;
+            color: #005baa;
             text-transform: uppercase;
             margin-top: 14px;
             margin-bottom: 6px;
             border-bottom: 1.5px solid #e2e8f0;
             padding-bottom: 4px;
+            letter-spacing: 0.3px;
         }
         .data-table {
             width: 100%;
@@ -133,12 +142,12 @@
             font-size: 9pt;
         }
         .data-table th {
-            background-color: #03428e;
+            background-color: #005baa;
             color: #ffffff;
             font-weight: 600;
             text-align: left;
             padding: 6px 8px;
-            border: 1px solid #03428e;
+            border: 1px solid #005baa;
             font-size: 8.5pt;
             text-transform: uppercase;
             word-wrap: break-word;
@@ -155,19 +164,12 @@
         .data-table tr:nth-child(even) td {
             background-color: #f8fafc;
         }
-        .notes-box {
-            font-size: 8pt;
-            color: #64748b;
-            background-color: #f8fafc;
-            border-left: 3px solid #03428e;
-            padding: 8px 12px;
-            margin-top: 15px;
-            margin-bottom: 25px;
-        }
+
         .sign-table {
             width: 100%;
-            margin-top: 20px;
+            margin-top: 24px;
             border-collapse: collapse;
+            page-break-inside: avoid;
         }
         .sign-table td {
             width: 50%;
@@ -175,16 +177,8 @@
             vertical-align: top;
             font-size: 9pt;
         }
-        .sign-qr-box {
-            margin: 8px auto;
-            display: inline-block;
-            border: 1px dashed #cbd5e1;
-            padding: 4px;
-            border-radius: 4px;
-            background: #ffffff;
-        }
         .footer-note {
-            margin-top: 30px;
+            margin-top: 25px;
             text-align: center;
             font-size: 7.5pt;
             color: #94a3b8;
@@ -195,15 +189,27 @@
 </head>
 <body>
 
+    @php
+        $logoPath = public_path('images/logobbpom.png');
+        $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+
+        // Ambil info SPU dari data sampel jika ada, atau gunakan default resmi
+        $dataArr = is_array($item->data) ? $item->data : [];
+        $spuNum = $dataArr['no_spu'] ?? $dataArr['spu'] ?? $dataArr['nomor_spu'] ?? 'SPU.117.05.26.10.16.0036';
+        $komoditi = $dataArr['komoditi'] ?? 'Narkotika';
+        $anggaran = $dataArr['anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $dataArr['asal_sampling'] ?? $dataArr['asal_sampel'] ?? 'Kepolisian';
+    @endphp
+
     <!-- KOP SURAT RESMI BPOM -->
     <table class="header-table">
         <tr>
-            <td class="header-logo">
-                <div class="header-logo-badge">
-                    BADAN<br/>POM
-                </div>
-            </td>
-            <td class="header-text">
+            @if(!empty($logoBase64))
+                <td class="header-logo">
+                    <img src="data:image/png;base64,{{ $logoBase64 }}" class="header-logo-img" alt="Logo BBPOM" />
+                </td>
+            @endif
+            <td class="header-text" style="{{ empty($logoBase64) ? 'text-align: center; width: 100%;' : '' }}">
                 <h3>BADAN PENGAWAS OBAT DAN MAKANAN</h3>
                 <h2>BALAI BESAR PENGAWAS OBAT DAN MAKANAN DI MATARAM</h2>
                 <h1>LABORATORIUM PENGUJIAN</h1>
@@ -215,95 +221,105 @@
 
     <div class="double-line"></div>
 
-    <!-- JUDUL DOKUMEN -->
-    <div class="doc-title-container">
-        <h2 class="doc-title">LAPORAN HASIL PENGUJIAN SAMPEL</h2>
-        <div class="doc-subtitle">Nomor: LHP/BBPOM-MTR/{{ date('Y') }}/{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
-    </div>
+    <!-- FORMAT BERITA ACARA SPU (SURAT PERMINTAAN UJI) -->
+    <div class="spu-box">
+        <div class="spu-title-box">
+            <h2 class="spu-title">SURAT PERMINTAAN UJI</h2>
+            <div class="spu-no">{{ $spuNum }}</div>
+        </div>
 
-    <!-- KOTAK VERIFIKASI QR CODE -->
-    <div class="verification-box">
-        <table class="verification-table">
+        <p class="spu-preamble-text">Bersama ini disampaikan daftar sampel:</p>
+        
+        <table class="spu-meta-table">
             <tr>
-                <td style="vertical-align: middle;">
-                    <div style="font-size: 10.5pt; font-weight: bold; color: #03428e;">
-                        {{ $item->display_title ?? 'Sampel Pengujian' }}
-                    </div>
-                    <div style="font-size: 8.5pt; color: #475569; margin-top: 2px;">
-                        Identifikasi: <strong>{{ $item->display_code ?? '-' }}</strong> &bull; Baris: #{{ $item->row_number }}
-                    </div>
-                    <div style="font-size: 8pt; color: #047857; margin-top: 3px; word-break: break-all;">
-                        <strong>Isi QR Code:</strong> {{ $item->qr_content ?: ($item->code ?: '-') }}
-                    </div>
-                </td>
-                <td style="width: 110px; text-align: right; vertical-align: middle;">
-                    @if(!empty($qrBase64))
-                        <img src="data:image/svg+xml;base64,{{ $qrBase64 }}" width="90" height="90" style="display: inline-block;" />
-                    @endif
-                </td>
+                <td class="spu-label">Komoditi</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $komoditi }}</td>
+            </tr>
+            <tr>
+                <td class="spu-label">Anggaran</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $anggaran }}</td>
+            </tr>
+            <tr>
+                <td class="spu-label">Asal Sampling</td>
+                <td class="spu-sep">:</td>
+                <td class="spu-val">{{ $asalSampling }}</td>
             </tr>
         </table>
     </div>
 
-    <!-- TABEL DETAIL DATA DARI EXCEL -->
-    <div class="section-heading">DATA DETAIL HASIL PENGUJIAN</div>
+    <!-- TABEL DETAIL DATA DARI EXCEL/DOKUMEN TANPA KOLOM QR CODE -->
+    <div class="section-heading">DATA DETAIL SAMPEL PENGUJIAN</div>
     <table class="data-table">
         <thead>
             <tr>
                 <th style="width: 35px; text-align: center;">No</th>
-                <th style="width: 220px;">Parameter / Kolom Excel</th>
-                <th>Nilai Pengujian / Keterangan</th>
+                <th style="width: 220px;">Parameter / Informasi</th>
+                <th>Keterangan / Hasil</th>
             </tr>
         </thead>
         <tbody>
             @php $i = 1; @endphp
             @if(is_array($item->data))
                 @foreach($item->data as $key => $val)
-                    <tr>
-                        <td style="text-align: center; color: #64748b;">{{ $i++ }}</td>
-                        <td style="font-weight: 600; color: #334155;">
-                            @if(str_contains($key, ' - '))
-                                @php [$mainK, $subK] = explode(' - ', $key, 2); @endphp
-                                <span style="font-size: 8pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainK) }} &rsaquo;</span><br/>
-                                <span style="font-size: 9.5pt; color: #0f172a; font-weight: bold;">{{ str_replace('_', ' ', $subK) }}</span>
-                            @else
-                                <span style="font-size: 9.5pt; text-transform: capitalize;">{{ str_replace('_', ' ', $key) }}</span>
-                            @endif
-                        </td>
-                        <td style="color: #0f172a;">
-                            @if(is_bool($val))
-                                {{ $val ? 'Ya' : 'Tidak' }}
-                            @elseif(is_array($val))
-                                {{ json_encode($val) }}
-                            @else
-                                {{ $val ?? '-' }}
-                            @endif
-                        </td>
-                    </tr>
+                    @php
+                        $keyLower = strtolower(trim($key));
+                        $isQrKey = str_contains($keyLower, 'qr');
+                        $valStr = is_string($val) ? strtolower($val) : '';
+                        $isQrVal = str_contains($valStr, 'otomatis di-generate');
+                    @endphp
+                    @if(!$isQrKey && !$isQrVal)
+                        <tr>
+                            <td style="text-align: center; color: #64748b;">{{ $i++ }}</td>
+                            <td style="font-weight: 600; color: #334155;">
+                                @if(str_contains($key, ' - '))
+                                    @php [$mainK, $subK] = explode(' - ', $key, 2); @endphp
+                                    <span style="font-size: 7.5pt; color: #64748b; font-weight: normal; text-transform: uppercase;">{{ str_replace('_', ' ', $mainK) }} &rsaquo;</span><br/>
+                                    <span style="font-size: 9pt; color: #0f172a; font-weight: bold;">{{ str_replace('_', ' ', $subK) }}</span>
+                                @else
+                                    <span style="font-size: 9pt; text-transform: capitalize;">{{ str_replace('_', ' ', $key) }}</span>
+                                @endif
+                            </td>
+                            <td style="color: #0f172a;">
+                                @if(is_bool($val))
+                                    {{ $val ? 'Ya' : 'Tidak' }}
+                                @elseif(is_array($val))
+                                    {{ json_encode($val) }}
+                                @else
+                                    {{ $val ?? '-' }}
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
                 @endforeach
             @endif
         </tbody>
     </table>
 
-    <!-- TANDA TANGAN DIGITAL -->
+    <!-- TANDA TANGAN PEJABAT / ANALIS -->
     <table class="sign-table">
         <tr>
             <td>
                 Mengetahui,<br/>
                 <strong>Manajer Teknis / Penyelia</strong>
-                <div style="height: 60px;"></div>
+                <div style="height: 55px;"></div>
                 <strong>Apt. I Made Sujana, S.Farm.</strong><br/>
                 <span style="color: #64748b; font-size: 8pt;">NIP. 19840315 200812 1 002</span>
             </td>
             <td>
                 Mataram, {{ now()->translatedFormat('d F Y') }}<br/>
                 <strong>Analis Penguji</strong>
-                <div style="height: 60px;"></div>
-                <strong>{{ $item->data['nama_analis'] ?? $item->data['analis'] ?? $item->data['penguji'] ?? 'Lalu Naofal Arkan, S.T.' }}</strong><br/>
-                <span style="color: #64748b; font-size: 8pt;">Petugas Laboratorium Pengujian</span>
+                <div style="height: 55px;"></div>
+                <strong>{{ $item->data['nama_analis'] ?? $item->data['analis'] ?? $item->data['penguji'] ?? 'Petugas Laboratorium Pengujian' }}</strong><br/>
+                <span style="color: #64748b; font-size: 8pt;">Balai Besar POM di Mataram</span>
             </td>
         </tr>
     </table>
+
+    <div class="footer-note">
+        Dokumen ini sah dan diterbitkan resmi oleh Sistem Informasi Laboratorium Pengujian BBPOM di Mataram.
+    </div>
 
 </body>
 </html>
