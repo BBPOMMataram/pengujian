@@ -139,21 +139,28 @@ class PengujianTest extends TestCase
     {
         $service = new \App\Services\PdfImportService();
 
-        // 1. Test parsing K1 M0 R1 to Lokasi Sampel
-        $lokasi1 = $service->parseLokasiSampel('K1 M0 R1');
-        $this->assertEquals('Lab Kimia 1 Sampel, Lab Mikro 0 Sampel, Retensi 1 Sampel', $lokasi1);
+        // 1. Test parsing K1 M0 R1 to Lokasi Sampel (0 is omitted)
+        $lokasi1 = $service->parseLokasiSampel('K1 M0 R1', 'Narkotika');
+        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $lokasi1);
 
-        $lokasi2 = $service->parseLokasiSampel('K2 M1 R0');
-        $this->assertEquals('Lab Kimia 2 Sampel, Lab Mikro 1 Sampel, Retensi 0 Sampel', $lokasi2);
+        $lokasi2 = $service->parseLokasiSampel('K2 M1 R0', 'Obat Tradisional');
+        $this->assertEquals('Kimia 2 Sampel dan Mikro 1 Sampel', $lokasi2);
 
-        // 2. Test mapping Jenis Sampel to base Komoditi
+        // 2. Test empty catatan: if Narkotika -> Kimia, if other -> '-'
+        $lokasiNarkotikaEmpty = $service->parseLokasiSampel('', 'Narkotika - Pihak Ke 3 - Kepolisian');
+        $this->assertEquals('Kimia', $lokasiNarkotikaEmpty);
+
+        $lokasiOtherEmpty = $service->parseLokasiSampel('', 'Obat Traditional (OT) - Rutin', 'Obat Tradisional');
+        $this->assertEquals('-', $lokasiOtherEmpty);
+
+        // 3. Test mapping Jenis Sampel to base Komoditi
         $komoditi1 = $service->mapKomoditi('Obat Traditional (OT) - Rutin');
         $this->assertEquals('Obat Tradisional', $komoditi1);
 
         $komoditi2 = $service->mapKomoditi('Narkotika - Pihak Ke 3 - Kepolisian');
         $this->assertEquals('Narkotika', $komoditi2);
 
-        // 3. Test load sample PDF creates NIE, Lokasi Sampel, and full Jenis Sampel
+        // 4. Test load sample PDF creates NIE, Lokasi Sampel, and full Jenis Sampel
         $this->post('/load-sample-pdf');
         $item = PengujianItem::first();
 
@@ -163,17 +170,23 @@ class PengujianTest extends TestCase
         $this->assertArrayHasKey('Jenis Sampel', $item->data);
         $this->assertEquals('Narkotika - Pihak Ke 3 - Kepolisian', $item->data['Jenis Sampel']);
         $this->assertArrayHasKey('Lokasi Sampel', $item->data);
-        $this->assertEquals('Lab Kimia 1 Sampel, Lab Mikro 0 Sampel, Retensi 1 Sampel', $item->data['Lokasi Sampel']);
+        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $item->data['Lokasi Sampel']);
 
         // Check QR content contains NIE and Lokasi Sampel
         $this->assertStringContainsString('NIE: -', $item->qr_content);
         $this->assertStringContainsString('Jenis Sampel: Narkotika - Pihak Ke 3 - Kepolisian', $item->qr_content);
-        $this->assertStringContainsString('Lokasi Sampel: Lab Kimia 1 Sampel, Lab Mikro 0 Sampel, Retensi 1 Sampel', $item->qr_content);
+        $this->assertStringContainsString('Lokasi Sampel: Kimia 1 Sampel dan Retensi 1 Sampel', $item->qr_content);
 
-        // Check sample 2 (Catatan: - -> Lokasi Sampel: -)
+        // Check sample 2 (Catatan: - & Narkotika -> Lokasi Sampel: Kimia)
         $item2 = PengujianItem::skip(1)->first();
         $this->assertNotNull($item2);
-        $this->assertEquals('-', $item2->data['Lokasi Sampel']);
-        $this->assertStringContainsString('Lokasi Sampel: -', $item2->qr_content);
+        $this->assertEquals('Kimia', $item2->data['Lokasi Sampel']);
+        $this->assertStringContainsString('Lokasi Sampel: Kimia', $item2->qr_content);
+
+        // Check sample 3 (Catatan: - & Obat Tradisional -> Lokasi Sampel: -)
+        $item3 = PengujianItem::skip(2)->first();
+        $this->assertNotNull($item3);
+        $this->assertEquals('-', $item3->data['Lokasi Sampel']);
+        $this->assertStringContainsString('Lokasi Sampel: -', $item3->qr_content);
     }
 }
