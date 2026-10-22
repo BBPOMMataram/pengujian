@@ -604,9 +604,9 @@
 
                 <!-- Action Buttons in Modal -->
                 <div class="grid grid-cols-2 gap-2.5 pt-1">
-                    <a id="modal-btn-download-svg" href="#" download="qr-code.svg" class="inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all border border-slate-200">
-                        <span>Unduh QR (SVG)</span>
-                    </a>
+                    <button type="button" id="modal-btn-download-png" onclick="downloadQrPng()" class="inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all border border-slate-200" title="Unduh gambar QR Code berformat PNG siap cetak / print">
+                        <span>Unduh QR (PNG)</span>
+                    </button>
 
                     <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all">
                         <span>Buka PDF Baris Ini</span>
@@ -839,11 +839,65 @@
             const svgDataUri = qrBase64 ? ('data:image/svg+xml;base64,' + qrBase64) : ('/qr/' + qrToken);
             qrImg.src = svgDataUri;
 
-            const downloadBtn = document.getElementById('modal-btn-download-svg');
-            downloadBtn.href = svgDataUri;
-            downloadBtn.download = 'QR-' + (code || 'code').replace(/[^a-z0-9]/gi, '_') + '.svg';
-
             modal.classList.remove('hidden');
+        }
+
+        // Unduh QR Code dalam format PNG siap print (resolusi tinggi 800x800 dengan background putih)
+        function downloadQrPng() {
+            const qrImg = document.getElementById('modal-qr-img');
+            if (!qrImg || !qrImg.src) return;
+
+            const sampleCode = (document.getElementById('modal-sample-code').innerText || 'QR_Code').trim();
+            const cleanFilename = 'QR-' + sampleCode.replace(/[^a-z0-9\.\-_]/gi, '_') + '.png';
+
+            const canvas = document.createElement('canvas');
+            const size = 800;
+            const padding = 40;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Beri background putih solid agar saat dicetak tidak transparan atau menghitam
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                ctx.drawImage(img, padding, padding, size - (padding * 2), size - (padding * 2));
+
+                try {
+                    canvas.toBlob(function(blob) {
+                        if (blob) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = cleanFilename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        } else {
+                            const dataUrl = canvas.toDataURL('image/png');
+                            const a = document.createElement('a');
+                            a.href = dataUrl;
+                            a.download = cleanFilename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                    }, 'image/png', 1.0);
+                } catch (e) {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = cleanFilename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            };
+            img.src = qrImg.src;
         }
 
         function closeQrModal() {
