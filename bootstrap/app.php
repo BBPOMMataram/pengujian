@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e) {
-            return response('<h1>DEBUG ERROR</h1><p><strong>' . htmlspecialchars($e->getMessage()) . '</strong> in ' . htmlspecialchars($e->getFile()) . ':' . $e->getLine() . '</p><pre style="background:#f1f5f9;padding:12px;border-radius:8px;">' . htmlspecialchars($e->getTraceAsString()) . '</pre>', 500);
+            if (request()->has('debug_error')) {
+                return response('<h1>DEBUG ERROR</h1><p><strong>' . htmlspecialchars($e->getMessage()) . '</strong> in ' . htmlspecialchars($e->getFile()) . ':' . $e->getLine() . '</p><pre style="background:#f1f5f9;padding:12px;border-radius:8px;">' . htmlspecialchars($e->getTraceAsString()) . '</pre>', 500);
+            }
         });
     })->create();
