@@ -25,23 +25,24 @@ jobs:
             echo "=== [Deploy] Target Directory Setup ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
 
-            APP_DIR="/home/bbpommataram.id/PENGUJIAN"
+            APP_DIR="/home/pengujian.bbpommataram.id/PENGUJIAN"
             REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git"
 
-            # 1. Pastikan direktori target ada
-            mkdir -p "$APP_DIR"
-
-            # 2. Jika clone sebelumnya ada di /home/bbpommataram.id/pengujian.bbpommataram.id dan target belum ada .git
-            OLD_DIR="/home/bbpommataram.id/pengujian.bbpommataram.id"
-            if [ -d "$OLD_DIR/.git" ] && [ ! -d "$APP_DIR/.git" ]; then
-                echo "[Deploy] Migrating existing repository from $OLD_DIR to $APP_DIR..."
-                cp -a "$OLD_DIR/." "$APP_DIR/" 2>/dev/null || true
+            # Pastikan direktori target ada
+            if ! mkdir -p "$APP_DIR" 2>/dev/null; then
+                if [ -d "/home/bbpommataram.id" ] && [ -w "/home/bbpommataram.id" ]; then
+                    APP_DIR="/home/bbpommataram.id/PENGUJIAN"
+                else
+                    APP_DIR="$HOME/PENGUJIAN"
+                fi
+                mkdir -p "$APP_DIR"
             fi
 
+            echo "[Deploy] Using APP_DIR: $APP_DIR"
             cd "$APP_DIR" || exit 1
 
-            # 3. Inisialisasi git jika folder belum memiliki .git (mengatasi 'fatal: not a git repository')
-            if [ ! -d "$APP_DIR/.git" ]; then
+            # Inisialisasi git jika folder belum memiliki .git (mengatasi 'fatal: not a git repository')
+            if [ ! -d ".git" ]; then
                 echo "[Deploy] Initializing git in $APP_DIR..."
                 git init
                 git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
@@ -65,49 +66,34 @@ jobs:
             echo "[Deploy] Current commit: $(git rev-parse --short HEAD)"
 
             echo "[Deploy] Configuring .env..."
-            if [ ! -f "$APP_DIR/.env" ]; then
-                if [ -f "$OLD_DIR/.env" ]; then
-                    echo "[Deploy] Copying .env from $OLD_DIR..."
-                    cp "$OLD_DIR/.env" "$APP_DIR/.env"
-                else
-                    echo "[Deploy] Creating .env from .env.example..."
-                    cp "$APP_DIR/.env.example" "$APP_DIR/.env"
-                fi
+            if [ ! -f ".env" ]; then
+                echo "[Deploy] Creating .env from .env.example..."
+                cp .env.example .env
             fi
 
             # Set APP_URL
-            if grep -q "^APP_URL=" "$APP_DIR/.env"; then
-                sed -i "s|^APP_URL=.*|APP_URL=https://pengujian.bbpommataram.id|" "$APP_DIR/.env"
+            if grep -q "^APP_URL=" .env; then
+                sed -i "s|^APP_URL=.*|APP_URL=https://pengujian.bbpommataram.id|" .env
             else
-                echo "APP_URL=https://pengujian.bbpommataram.id" >> "$APP_DIR/.env"
+                echo "APP_URL=https://pengujian.bbpommataram.id" >> .env
             fi
 
             # Set APP_ENV dan APP_DEBUG
-            sed -i "s|^APP_ENV=.*|APP_ENV=production|" "$APP_DIR/.env" 2>/dev/null || true
-            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" "$APP_DIR/.env" 2>/dev/null || true
+            sed -i "s|^APP_ENV=.*|APP_ENV=production|" .env 2>/dev/null || true
+            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" .env 2>/dev/null || true
 
             # Buat folder framework yang dibutuhkan Laravel jika belum ada
-            mkdir -p "$APP_DIR/storage/framework/cache/data"
-            mkdir -p "$APP_DIR/storage/framework/sessions"
-            mkdir -p "$APP_DIR/storage/framework/views"
-            mkdir -p "$APP_DIR/storage/logs"
-            mkdir -p "$APP_DIR/bootstrap/cache"
-            mkdir -p "$APP_DIR/database"
+            mkdir -p storage/framework/cache/data
+            mkdir -p storage/framework/sessions
+            mkdir -p storage/framework/views
+            mkdir -p storage/logs
+            mkdir -p bootstrap/cache
+            mkdir -p database
 
             # Pastikan file SQLite database ada
-            if grep -q "^DB_CONNECTION=sqlite" "$APP_DIR/.env" || ! grep -q "^DB_CONNECTION=" "$APP_DIR/.env"; then
-                if [ -f "$OLD_DIR/database/database.sqlite" ] && [ ! -f "$APP_DIR/database/database.sqlite" ]; then
-                    cp "$OLD_DIR/database/database.sqlite" "$APP_DIR/database/database.sqlite"
-                else
-                    touch "$APP_DIR/database/database.sqlite"
-                fi
+            if grep -q "^DB_CONNECTION=sqlite" .env || ! grep -q "^DB_CONNECTION=" .env; then
+                touch database/database.sqlite
                 echo "[Deploy] SQLite database verified at $APP_DIR/database/database.sqlite"
-            fi
-
-            # Salin vendor jika ada di folder lama agar composer tidak perlu unduh ulang semuanya
-            if [ -d "$OLD_DIR/vendor" ] && [ ! -d "$APP_DIR/vendor" ]; then
-                echo "[Deploy] Reusing vendor from $OLD_DIR..."
-                cp -a "$OLD_DIR/vendor" "$APP_DIR/" 2>/dev/null || true
             fi
 
             echo "[Deploy] Installing Composer dependencies..."
@@ -115,7 +101,7 @@ jobs:
             composer install --no-dev --prefer-dist --no-interaction --no-ansi --optimize-autoloader || exit 1
 
             # Pastikan APP_KEY terisi
-            if ! grep -q "^APP_KEY=base64:" "$APP_DIR/.env"; then
+            if ! grep -q "^APP_KEY=base64:" .env; then
                 echo "[Deploy] Generating application key..."
                 php artisan key:generate --force || true
             fi
@@ -132,51 +118,20 @@ jobs:
             echo "[Deploy] Linking storage..."
             php artisan storage:link 2>/dev/null || true
 
-            echo "[Deploy] Configuring Web Server .htaccess..."
-            cat << 'HTACCESS_EOF' > "$APP_DIR/.htaccess"
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
-    RewriteEngine On
-
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # Send Requests To Public Directory
-    RewriteCond %{REQUEST_URI} !^/public/
-    RewriteRule ^(.*)$ public/$1 [L]
-</IfModule>
-HTACCESS_EOF
-
-            # Buat symlink dari document root umum cPanel ke $APP_DIR/public
-            if [ -d "/home/bbpommataram.id/public_html" ]; then
-                ln -sfn "$APP_DIR/public" "/home/bbpommataram.id/public_html/pengujian" 2>/dev/null || true
-                ln -sfn "$APP_DIR/public" "/home/bbpommataram.id/public_html/PENGUJIAN" 2>/dev/null || true
-            fi
-            ln -sfn "$APP_DIR/public" "/home/bbpommataram.id/pengujian.bbpommataram.id" 2>/dev/null || true
-
             echo "[Deploy] Fixing directory and file permissions..."
             SERVER_USER=$(whoami)
-            chown -R "$SERVER_USER:$SERVER_USER" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database" 2>/dev/null || true
+            chown -R "$SERVER_USER:$SERVER_USER" storage bootstrap/cache database 2>/dev/null || true
 
             # Berikan hak akses penuh ke storage, cache, dan database SQLite
-            chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database" 2>/dev/null || true
-            if [ -f "$APP_DIR/database/database.sqlite" ]; then
-                chmod 664 "$APP_DIR/database/database.sqlite" 2>/dev/null || true
+            chmod -R 775 storage bootstrap/cache database 2>/dev/null || true
+            if [ -f "database/database.sqlite" ]; then
+                chmod 664 database/database.sqlite 2>/dev/null || true
             fi
 
-            touch "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
-            chmod 664 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
+            touch storage/logs/laravel.log 2>/dev/null || true
+            chmod 664 storage/logs/laravel.log 2>/dev/null || true
 
             # Touch public/index.php to reload LiteSpeed / PHP-FPM opcache
-            touch "$APP_DIR/public/index.php" 2>/dev/null || true
+            touch public/index.php 2>/dev/null || true
 
             echo "=== [Deploy] Successfully deployed to https://pengujian.bbpommataram.id ✅ ==="
