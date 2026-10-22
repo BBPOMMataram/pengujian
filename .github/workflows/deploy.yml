@@ -1,8 +1,9 @@
-name: Deploy to server
+name: Deploy Pengujian to server
 
 on:
   push:
     branches:
+      - master
       - main
 
 jobs:
@@ -18,27 +19,29 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           port: 56710
-
           key: ${{ secrets.SSH_KEY }}
           debug: true
           script: |
-            echo "=== [Deploy] Detecting Siproval Path on Server ==="
+            echo "=== [Deploy] Detecting Pengujian Path on Server ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
 
             APP_DIR=""
             for candidate in \
-                "/home/bbpommataram.id/SIPROVAL" \
-                "/home/bbpommataram.id/Siproval" \
-                "/home/bbpommataram.id/siproval" \
-                "/home/bbpommataram.id/siproval.bbpommataram.id" \
-                "/home/bbpommataram.id/public_html/siproval" \
-                "$HOME/siproval" \
-                "$HOME/SIPROVAL" \
-                "$HOME/Siproval" \
-                "$HOME/siproval.bbpommataram.id" \
-                "$HOME/public_html/siproval" \
-                "/var/www/siproval" \
-                "/var/www/html/siproval"; do
+                "/home/bbpommataram.id/pengujian.bbpommataram.id" \
+                "/home/bbpom9725/pengujian.bbpommataram.id" \
+                "/home/bbpommataram.id/public_html/pengujian" \
+                "/home/bbpom9725/public_html/pengujian" \
+                "/home/bbpommataram.id/pengujian" \
+                "/home/bbpom9725/pengujian" \
+                "/home/bbpommataram.id/PENGUJIAN" \
+                "/home/bbpom9725/PENGUJIAN" \
+                "$HOME/pengujian.bbpommataram.id" \
+                "$HOME/public_html/pengujian" \
+                "$HOME/pengujian" \
+                "$HOME/PENGUJIAN" \
+                "/var/www/pengujian.bbpommataram.id" \
+                "/var/www/pengujian" \
+                "/var/www/html/pengujian"; do
                 if [ -d "$candidate" ]; then
                     APP_DIR="$candidate"
                     echo "[Deploy] Found candidate directory: $APP_DIR"
@@ -47,25 +50,22 @@ jobs:
             done
 
             if [ -z "$APP_DIR" ]; then
-                echo "[Deploy] Candidate paths not found. Searching entire server..."
-                FOUND=$(find /home /var/www -maxdepth 3 -iname "*siproval*" -type d 2>/dev/null | head -n 1)
+                echo "[Deploy] Candidate paths not found. Searching server for pengujian directory..."
+                FOUND=$(find /home /var/www "$HOME" -maxdepth 3 -iname "*pengujian*" -type d 2>/dev/null | head -n 1)
                 if [ -n "$FOUND" ]; then
                     APP_DIR="$FOUND"
                     echo "[Deploy] Found via search: $APP_DIR"
                 else
-                    echo "[Deploy] Siproval directory not found on server. Diagnostics:"
-                    echo "--- /home listing ---"
-                    ls -la /home 2>/dev/null || true
-                    echo "--- $HOME listing ---"
-                    ls -la "$HOME" 2>/dev/null || true
-
+                    echo "[Deploy] Directory not found. Setting default installation path..."
                     if [ -d "/home/bbpommataram.id" ] && [ -w "/home/bbpommataram.id" ]; then
-                        APP_DIR="/home/bbpommataram.id/SIPROVAL"
+                        APP_DIR="/home/bbpommataram.id/pengujian.bbpommataram.id"
+                    elif [ -d "/home/bbpom9725" ] && [ -w "/home/bbpom9725" ]; then
+                        APP_DIR="/home/bbpom9725/pengujian.bbpommataram.id"
                     else
-                        APP_DIR="$HOME/SIPROVAL"
+                        APP_DIR="$HOME/pengujian.bbpommataram.id"
                     fi
                     echo "[Deploy] Cloning repository into $APP_DIR..."
-                    git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/Siproval.git" "$APP_DIR" || exit 1
+                    git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git" "$APP_DIR" || exit 1
                 fi
             fi
 
@@ -76,114 +76,84 @@ jobs:
             git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 
             echo "[Deploy] Fetch latest code..."
-            git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/Siproval.git" main:refs/remotes/origin/main --force || exit 1
-            git reset --hard origin/main || exit 1
+            if git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git" master:refs/remotes/origin/master --force 2>/dev/null; then
+                git reset --hard origin/master || exit 1
+            else
+                git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/BBPOMMataram/pengujian.git" main:refs/remotes/origin/main --force || exit 1
+                git reset --hard origin/main || exit 1
+            fi
 
             echo "[Deploy] Current commit: $(git rev-parse --short HEAD)"
 
-            echo "[Deploy] Syncing auth database credentials from AUTH-BPOM if present..."
-            AUTH_ENV="/home/bbpommataram.id/AUTH-BPOM/.env"
-            if [ -f "$AUTH_ENV" ]; then
-                echo "[Deploy] Found AUTH-BPOM .env, syncing credentials to SIPROVAL .env..."
-                AUTH_DB=$(grep '^DB_DATABASE=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-                AUTH_USER=$(grep '^DB_USERNAME=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-                AUTH_PASS=$(grep '^DB_PASSWORD=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-                AUTH_HOST=$(grep '^DB_HOST=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-                AUTH_PORT=$(grep '^DB_PORT=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-                AUTH_JWT=$(grep '^JWT_SECRET=' "$AUTH_ENV" | cut -d '=' -f2- | tr -d '\r"' || true)
-
-                for key in BBPO_AUTH_DB_HOST BBPO_AUTH_DB_PORT BBPO_AUTH_DB_DATABASE BBPO_AUTH_DB_USERNAME BBPO_AUTH_DB_PASSWORD JWT_SECRET; do
-                    if ! grep -q "^$key=" "$APP_DIR/.env" 2>/dev/null; then
-                        echo "$key=" >> "$APP_DIR/.env"
-                    fi
-                done
-
-                if [ -n "$AUTH_DB" ]; then
-                    sed -i "s|^BBPO_AUTH_DB_DATABASE=.*|BBPO_AUTH_DB_DATABASE=$AUTH_DB|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                if [ -n "$AUTH_USER" ]; then
-                    sed -i "s|^BBPO_AUTH_DB_USERNAME=.*|BBPO_AUTH_DB_USERNAME=$AUTH_USER|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                if [ -n "$AUTH_PASS" ]; then
-                    sed -i "s|^BBPO_AUTH_DB_PASSWORD=.*|BBPO_AUTH_DB_PASSWORD=$AUTH_PASS|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                if [ -n "$AUTH_HOST" ]; then
-                    sed -i "s|^BBPO_AUTH_DB_HOST=.*|BBPO_AUTH_DB_HOST=$AUTH_HOST|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                if [ -n "$AUTH_PORT" ]; then
-                    sed -i "s|^BBPO_AUTH_DB_PORT=.*|BBPO_AUTH_DB_PORT=$AUTH_PORT|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                if [ -n "$AUTH_JWT" ]; then
-                    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$AUTH_JWT|" "$APP_DIR/.env" 2>/dev/null || true
-                fi
-                echo "[Deploy] Successfully synced auth credentials from AUTH-BPOM to SIPROVAL."
+            echo "[Deploy] Configuring .env..."
+            if [ ! -f "$APP_DIR/.env" ]; then
+                echo "[Deploy] Creating .env from .env.example..."
+                cp "$APP_DIR/.env.example" "$APP_DIR/.env"
             fi
 
-            echo "[Deploy] Install dependencies..."
-            export COMPOSER_ALLOW_SUPERUSER=1
-            composer install --no-dev --prefer-dist --no-interaction --no-ansi || exit 1
+            # Ensure APP_URL is correctly pointed to pengujian.bbpommataram.id
+            if grep -q "^APP_URL=" "$APP_DIR/.env"; then
+                sed -i "s|^APP_URL=.*|APP_URL=https://pengujian.bbpommataram.id|" "$APP_DIR/.env"
+            else
+                echo "APP_URL=https://pengujian.bbpommataram.id" >> "$APP_DIR/.env"
+            fi
 
-            echo "[Deploy] Run migrations..."
+            # Ensure production settings
+            sed -i "s|^APP_ENV=.*|APP_ENV=production|" "$APP_DIR/.env" 2>/dev/null || true
+            sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" "$APP_DIR/.env" 2>/dev/null || true
+
+            # Ensure SQLite database exists if SQLite connection is used
+            if grep -q "^DB_CONNECTION=sqlite" "$APP_DIR/.env" || ! grep -q "^DB_CONNECTION=" "$APP_DIR/.env"; then
+                mkdir -p "$APP_DIR/database"
+                touch "$APP_DIR/database/database.sqlite"
+                echo "[Deploy] SQLite database verified at $APP_DIR/database/database.sqlite"
+            fi
+
+            echo "[Deploy] Installing Composer dependencies..."
+            export COMPOSER_ALLOW_SUPERUSER=1
+            composer install --no-dev --prefer-dist --no-interaction --no-ansi --optimize-autoloader || exit 1
+
+            # Ensure APP_KEY exists
+            if ! grep -q "^APP_KEY=base64:" "$APP_DIR/.env"; then
+                echo "[Deploy] Generating application key..."
+                php artisan key:generate --force || true
+            fi
+
+            echo "[Deploy] Running migrations..."
             php artisan migrate --force || exit 1
 
-            echo "[Deploy] Run Siproval Google Sheet deploy seeder..."
-            php artisan db:seed --class=SiprovalGoogleSheetDeploySeeder --force || exit 1
-
-            echo "[Deploy] Clear caches..."
+            echo "[Deploy] Optimizing caches..."
             php artisan optimize:clear || exit 1
+            php artisan config:cache || true
+            php artisan route:cache || true
+            php artisan view:cache || true
 
-            echo "[Deploy] Writing Google Sheets credentials.json..."
-            mkdir -p "$APP_DIR/storage/app"
-            cat << 'EOF' > "$APP_DIR/storage/app/credentials.json"
-            ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-            EOF
+            echo "[Deploy] Linking storage..."
+            php artisan storage:link 2>/dev/null || true
 
-            if [ -s "$APP_DIR/storage/app/credentials.json" ]; then
-                echo "[Deploy Check] storage/app/credentials.json: FOUND ✅"
-            else
-                echo "[Deploy Check] storage/app/credentials.json: EMPTY/MISSING ❌"
+            echo "[Deploy] Fixing directory and file permissions..."
+            SERVER_USER=$(whoami)
+            chown -R "$SERVER_USER:$SERVER_USER" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database" 2>/dev/null || true
+
+            # Directory permissions (775 / 755)
+            find "$APP_DIR/storage" -type d -exec chmod 775 {} \; 2>/dev/null || true
+            find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \; 2>/dev/null || true
+
+            # File permissions (664 / 644)
+            find "$APP_DIR/storage" -type f -exec chmod 664 {} \; 2>/dev/null || true
+            find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \; 2>/dev/null || true
+
+            # SQLite database permissions if present
+            if [ -f "$APP_DIR/database/database.sqlite" ]; then
+                chmod 664 "$APP_DIR/database/database.sqlite" 2>/dev/null || true
+                chmod 775 "$APP_DIR/database" 2>/dev/null || true
             fi
 
-            echo "[Deploy] Testing database connections..."
-            php -r "
-            require __DIR__ . '/vendor/autoload.php';
-            \$app = require_once __DIR__ . '/bootstrap/app.php';
-            \$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class);
-            \$kernel->bootstrap();
-
-            try {
-                echo '[Deploy DB Test] Main DB: ' . DB::connection()->getDatabaseName() . PHP_EOL;
-            } catch (Throwable \$e) {
-                echo '[Deploy DB Test] Main DB Error: ' . \$e->getMessage() . PHP_EOL;
-            }
-
-            try {
-                \$authDb = DB::connection('bbpo_auth')->getDatabaseName();
-                \$katimCount = DB::connection('bbpo_auth')->table('katims')->count();
-                echo '[Deploy DB Test] bbpo_auth DB: ' . \$authDb . ' | katims count: ' . \$katimCount . PHP_EOL;
-            } catch (Throwable \$e) {
-                echo '[Deploy DB Test] bbpo_auth Error: ' . \$e->getMessage() . PHP_EOL;
-            }
-            " || true
-
-            echo "[Deploy] Fix permissions..."
-            # Set owner storage & cache
-            chown -R bbpom9725:bbpom9725 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
-
-            # Folder = 755 (drwxr-xr-x)
-            find "$APP_DIR/storage" -type d -exec chmod 755 {} \; 2>/dev/null || true
-            find "$APP_DIR/bootstrap/cache" -type d -exec chmod 755 {} \; 2>/dev/null || true
-
-            # File = 644 (-rw-r--r--)
-            find "$APP_DIR/storage" -type f -exec chmod 644 {} \; 2>/dev/null || true
-            find "$APP_DIR/bootstrap/cache" -type f -exec chmod 644 {} \; 2>/dev/null || true
-
-            # Khusus laravel.log pastikan bisa ditulis
+            # Laravel log file
             touch "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
-            chown bbpom9725:bbpom9725 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
-            chmod 644 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
+            chmod 664 "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || true
 
-            # Trigger LiteSpeed / opcache reload
+            # Touch public/index.php to reload LiteSpeed / PHP-FPM opcache
             touch "$APP_DIR/public/index.php" 2>/dev/null || true
 
-            echo "[Deploy] Done ✅"
+            echo "=== [Deploy] Successfully deployed to https://pengujian.bbpommataram.id ✅ ==="
