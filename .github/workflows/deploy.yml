@@ -21,6 +21,7 @@ jobs:
           port: ${{ secrets.SSH_PORT || 56710 }}
           key: ${{ secrets.SSH_KEY }}
           debug: true
+          script_stop: false
           script: |
             echo "=== [Deploy] Target Directory Setup ==="
             echo "User: $(whoami) | Home: $HOME | PWD: $(pwd)"
@@ -150,13 +151,15 @@ jobs:
             touch public/index.php 2>/dev/null || true
             touch "$APP_DIR/.lsphp_restart" 2>/dev/null || true
             touch "$APP_DIR/public/.lsphp_restart" 2>/dev/null || true
-            pkill -u "$SERVER_USER" -f lsphp 2>/dev/null || true
+            (pkill -u "$SERVER_USER" -f lsphp || true) 2>/dev/null || true
 
             # Sinkronkan views & code ke direktori pengujian sekunder jika ada
             for other in "$HOME/pengujian.bbpommataram.id" "$HOME/PENGUJIAN" "$HOME/pengujian.bbpommataram.id/PENGUJIAN" "/home/bbpom9725/pengujian.bbpommataram.id"; do
                 if [ -d "$other" ] && [ "$other" != "$APP_DIR" ]; then
                     echo "[Deploy] Syncing code to secondary directory: $other..."
-                    cp -r resources app routes "$other/" 2>/dev/null || true
+                    cp -r resources "$other/" 2>/dev/null || true
+                    cp -r app "$other/" 2>/dev/null || true
+                    cp -r routes "$other/" 2>/dev/null || true
                     rm -f "$other/storage/framework/views/"*.php 2>/dev/null || true
                     touch "$other/public/index.php" 2>/dev/null || true
                     touch "$other/public/.lsphp_restart" 2>/dev/null || true
