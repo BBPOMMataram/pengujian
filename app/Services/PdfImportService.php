@@ -534,26 +534,19 @@ class PdfImportService
                 $mappedData['Komposisi'] = $data['komposisi'];
             }
 
-            // SPU Document Metadata & Pejabat Penandatangan Resmi BBPOM
-            if ($spuNo) {
-                $mappedData['Nomor SPU'] = $spuNo;
-                $mappedData['no_spu'] = $spuNo;
-            }
-            if ($docAnggaran) {
-                $mappedData['Anggaran'] = $docAnggaran;
-            }
-            if ($docAsalSampling) {
-                $mappedData['Asal Sampling'] = $docAsalSampling;
-            }
-            if ($tanggalSpu) {
-                $mappedData['tanggal_spu'] = $tanggalSpu;
-            }
-            $mappedData['petugas_penerima'] = $petugasPenerima;
-            $mappedData['nip_petugas_penerima'] = $nipPetugasPenerima;
-            $mappedData['manager_administrasi'] = $managerAdministrasi;
-            $mappedData['nip_manager_administrasi'] = $nipManagerAdministrasi;
-            $mappedData['kepala_balai'] = $kepalaBalai;
-            $mappedData['nip_kepala_balai'] = $nipKepalaBalai;
+            // SPU Document Metadata & Pejabat Penandatangan Resmi BBPOM (Disimpan di _meta agar tidak mencemari tabel)
+            $mappedData['_meta'] = [
+                'no_spu' => $spuNo,
+                'anggaran' => $docAnggaran,
+                'asal_sampling' => $docAsalSampling,
+                'tanggal_spu' => $tanggalSpu,
+                'petugas_penerima' => $petugasPenerima,
+                'nip_petugas_penerima' => $nipPetugasPenerima,
+                'manager_administrasi' => $managerAdministrasi,
+                'nip_manager_administrasi' => $nipManagerAdministrasi,
+                'kepala_balai' => $kepalaBalai,
+                'nip_kepala_balai' => $nipKepalaBalai,
+            ];
 
             // Susun isi QR Code memuat Kode Sampel, Nama Produk, Jenis Sampel lengkap, NIE, dan Lokasi Sampel
             $qrLines = [];

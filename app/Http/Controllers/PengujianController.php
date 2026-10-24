@@ -84,7 +84,19 @@ class PengujianController extends Controller
             $item->qr_base64 = base64_encode($item->qr_svg_large);
 
             if (is_array($item->data)) {
+                $ignoredKeys = [
+                    'manager_administrasi', 'nip_manager_administrasi',
+                    'kepala_balai', 'nip_kepala_balai',
+                    'petugas_penerima', 'nip_petugas_penerima',
+                    'tanggal_spu', 'no_spu', 'nomor spu', 'nomor_spu',
+                    '_meta'
+                ];
+
                 foreach (array_keys($item->data) as $h) {
+                    $hLower = strtolower(trim($h));
+                    if (str_starts_with($h, '_') || in_array($hLower, $ignoredKeys)) {
+                        continue;
+                    }
                     if (!in_array($h, $headers)) {
                         $headers[] = $h;
                     }
@@ -321,17 +333,18 @@ class PengujianController extends Controller
                 'No Billing' => '820261020575208',
                 'Keterangan Sampling' => 'Plastik transparan bersegel yang dijahit benang warna merah dalam amplop coklat berlak segel barang bukti',
                 'Komposisi' => 'Metamfetamina (Shabu)',
-                'Nomor SPU' => 'SPU.117.05.26.10.16.0044',
-                'no_spu' => 'SPU.117.05.26.10.16.0044',
-                'Anggaran' => 'Pihak Ke 3 - Kepolisian',
-                'Asal Sampling' => 'Kepolisian',
-                'tanggal_spu' => '20 Oktober 2026',
-                'petugas_penerima' => 'Nirmala Nurhasanah, STP',
-                'nip_petugas_penerima' => '199205172023212054',
-                'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
-                'nip_manager_administrasi' => '197904052005011002',
-                'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
-                'nip_kepala_balai' => '198101242009121002',
+                '_meta' => [
+                    'no_spu' => 'SPU.117.05.26.10.16.0044',
+                    'anggaran' => 'Pihak Ke 3 - Kepolisian',
+                    'asal_sampling' => 'Kepolisian',
+                    'tanggal_spu' => '20 Oktober 2026',
+                    'petugas_penerima' => 'Nirmala Nurhasanah, STP',
+                    'nip_petugas_penerima' => '199205172023212054',
+                    'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
+                    'nip_manager_administrasi' => '197904052005011002',
+                    'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
+                    'nip_kepala_balai' => '198101242009121002',
+                ],
             ],
             [
                 'No' => '2',
@@ -352,17 +365,18 @@ class PengujianController extends Controller
                 'No Billing' => '820261020575296',
                 'Keterangan Sampling' => 'Plastik transparan bersegel yang dijahit benang warna merah dalam amplop coklat berlak segel barang bukti',
                 'Komposisi' => 'Metamfetamina (Shabu)',
-                'Nomor SPU' => 'SPU.117.05.26.10.16.0044',
-                'no_spu' => 'SPU.117.05.26.10.16.0044',
-                'Anggaran' => 'Pihak Ke 3 - Kepolisian',
-                'Asal Sampling' => 'Kepolisian',
-                'tanggal_spu' => '20 Oktober 2026',
-                'petugas_penerima' => 'Nirmala Nurhasanah, STP',
-                'nip_petugas_penerima' => '199205172023212054',
-                'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
-                'nip_manager_administrasi' => '197904052005011002',
-                'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
-                'nip_kepala_balai' => '198101242009121002',
+                '_meta' => [
+                    'no_spu' => 'SPU.117.05.26.10.16.0044',
+                    'anggaran' => 'Pihak Ke 3 - Kepolisian',
+                    'asal_sampling' => 'Kepolisian',
+                    'tanggal_spu' => '20 Oktober 2026',
+                    'petugas_penerima' => 'Nirmala Nurhasanah, STP',
+                    'nip_petugas_penerima' => '199205172023212054',
+                    'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
+                    'nip_manager_administrasi' => '197904052005011002',
+                    'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
+                    'nip_kepala_balai' => '198101242009121002',
+                ],
             ],
             [
                 'No' => '3',
@@ -383,17 +397,18 @@ class PengujianController extends Controller
                 'No Billing' => '820261020575300',
                 'Keterangan Sampling' => 'Botol kemasan asli bersegel utuh',
                 'Komposisi' => 'Ekstrak Curcuma xanthorrhiza Rhizoma',
-                'Nomor SPU' => 'SPU.117.05.26.10.16.0044',
-                'no_spu' => 'SPU.117.05.26.10.16.0044',
-                'Anggaran' => 'DIPA BBPOM di Mataram',
-                'Asal Sampling' => 'Balai Besar POM di Mataram',
-                'tanggal_spu' => '21 Oktober 2026',
-                'petugas_penerima' => 'Nirmala Nurhasanah, STP',
-                'nip_petugas_penerima' => '199205172023212054',
-                'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
-                'nip_manager_administrasi' => '197904052005011002',
-                'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
-                'nip_kepala_balai' => '198101242009121002',
+                '_meta' => [
+                    'no_spu' => 'SPU.117.05.26.10.16.0044',
+                    'anggaran' => 'DIPA BBPOM di Mataram',
+                    'asal_sampling' => 'Balai Besar POM di Mataram',
+                    'tanggal_spu' => '21 Oktober 2026',
+                    'petugas_penerima' => 'Nirmala Nurhasanah, STP',
+                    'nip_petugas_penerima' => '199205172023212054',
+                    'manager_administrasi' => 'Basuki Murdi Hartono, SH.',
+                    'nip_manager_administrasi' => '197904052005011002',
+                    'kepala_balai' => 'Yogi Abaso Mataram, S.Si., Apt',
+                    'nip_kepala_balai' => '198101242009121002',
+                ],
             ]
         ];
 
@@ -526,7 +541,19 @@ class PengujianController extends Controller
             $item->qr_base64 = base64_encode($qrSvg);
 
             if (is_array($item->data)) {
+                $ignoredKeys = [
+                    'manager_administrasi', 'nip_manager_administrasi',
+                    'kepala_balai', 'nip_kepala_balai',
+                    'petugas_penerima', 'nip_petugas_penerima',
+                    'tanggal_spu', 'no_spu', 'nomor spu', 'nomor_spu',
+                    '_meta'
+                ];
+
                 foreach (array_keys($item->data) as $h) {
+                    $hLower = strtolower(trim($h));
+                    if (str_starts_with($h, '_') || in_array($hLower, $ignoredKeys)) {
+                        continue;
+                    }
                     if (!in_array($h, $headers)) {
                         $headers[] = $h;
                     }
@@ -534,23 +561,24 @@ class PengujianController extends Controller
             }
         }
 
-        $colCount = count($headers);
-
-        // Check if layout requested explicitly, otherwise auto-switch:
-        // Jika kolom > 15 -> layout vertical per-baris (Kolom A: Header, Kolom B: Nilai Data)
-        // Jika kolom <= 15 -> layout tabular horizontal
-        $requestedLayout = strtolower($request->query('layout', ''));
-        if (in_array($requestedLayout, ['vertical', 'tabular'])) {
-            $layout = $requestedLayout;
-        } else {
-            $layout = ($colCount > 15) ? 'vertical' : 'tabular';
-        }
-
         $firstItem = $items->first();
         $filename = $firstItem->filename ?: 'Batch Pengujian';
         $sheetName = $firstItem->sheet_name ?: 'Data Pengujian';
+        $firstData = ($firstItem && is_array($firstItem->data)) ? $firstItem->data : [];
+        $firstMeta = $firstData['_meta'] ?? [];
 
-        if ($layout === 'vertical') {
+        $isSpu = ($firstItem && $firstItem->sheet_name === 'Dokumen SPU')
+            || isset($firstData['Kode Sampel'])
+            || isset($firstData['kode_sampel'])
+            || isset($firstData['no_spu'])
+            || isset($firstMeta['no_spu'])
+            || str_contains(strtolower($filename ?? ''), 'spu');
+
+        // Layout handling:
+        // Jika SPU: selalu gunakan format SPU Landscape 3 kolom (No, Identitas Sampel, Lokasi Sampel)
+        // kecuali user secara eksplisit meminta layout=vertical lewat URL
+        $requestedLayout = strtolower($request->query('layout', ''));
+        if ($requestedLayout === 'vertical') {
             // FORMAT VERTICAL PER-BARIS: Kolom A = Parameter, Kolom B = Nilai Data (Sesuai Gambar Lampiran)
             $pdf = Pdf::loadView('pdf.batch-vertical', [
                 'items' => $items,
@@ -566,13 +594,13 @@ class PengujianController extends Controller
             return $pdf->stream('LHP-' . Str::slug($filename) . '-perbaris.pdf');
         }
 
-        // FORMAT TABULAR GRID HORIZONTAL (Untuk kolom <= 15)
+        // FORMAT TABULAR GRID / SPU KESELURUHAN (Landscape)
+        $colCount = count($headers);
         $requestedOrientation = strtolower($request->query('orientation', ''));
         if (in_array($requestedOrientation, ['portrait', 'landscape'])) {
             $orientation = $requestedOrientation;
         } else {
-            // Auto switch: Landscape if > 5 columns, Portrait if <= 5 columns
-            $orientation = ($colCount > 5) ? 'landscape' : 'portrait';
+            $orientation = $isSpu ? 'landscape' : (($colCount > 5) ? 'landscape' : 'portrait');
         }
 
         // Auto font scaling to ensure table does not swell or overflow
@@ -590,9 +618,19 @@ class PengujianController extends Controller
             $headerFontSize = '6.5pt';
         }
 
+        $spuNum = $firstMeta['no_spu'] ?? $firstData['no_spu'] ?? $firstData['Nomor SPU'] ?? 'SPU.117.05.26.10.16.0044';
+        $komoditi = $firstMeta['komoditi'] ?? $firstData['komoditi'] ?? $firstData['Komoditi'] ?? 'Narkotika';
+        $anggaran = $firstMeta['anggaran'] ?? $firstData['anggaran'] ?? $firstData['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
+        $asalSampling = $firstMeta['asal_sampling'] ?? $firstData['asal_sampling'] ?? $firstData['Asal Sampling'] ?? 'Kepolisian';
+
         $pdf = Pdf::loadView('pdf.batch-pengujian', [
             'items' => $items,
             'headers' => $headers,
+            'isSpu' => $isSpu,
+            'spuNum' => $spuNum,
+            'komoditi' => $komoditi,
+            'anggaran' => $anggaran,
+            'asalSampling' => $asalSampling,
             'orientation' => $orientation,
             'fontSize' => $fontSize,
             'headerFontSize' => $headerFontSize,
@@ -604,7 +642,7 @@ class PengujianController extends Controller
 
         $pdf->setPaper('A4', $orientation);
 
-        return $pdf->stream('LHP-' . Str::slug($filename) . '-tabular.pdf');
+        return $pdf->stream('SPU-' . Str::slug($filename) . '-keseluruhan.pdf');
     }
 
     /**

@@ -195,18 +195,19 @@ class PengujianTest extends TestCase
         $this->post('/load-sample-pdf');
         $item = PengujianItem::first();
 
-        // 1. Assert item has official SPU metadata & 3 signatories
-        $this->assertArrayHasKey('petugas_penerima', $item->data);
-        $this->assertEquals('Nirmala Nurhasanah, STP', $item->data['petugas_penerima']);
-        $this->assertEquals('199205172023212054', $item->data['nip_petugas_penerima']);
+        // 1. Assert item has official SPU metadata & 3 signatories (stored in _meta or data)
+        $meta = $item->data['_meta'] ?? $item->data;
+        $this->assertArrayHasKey('petugas_penerima', $meta);
+        $this->assertEquals('Nirmala Nurhasanah, STP', $meta['petugas_penerima']);
+        $this->assertEquals('199205172023212054', $meta['nip_petugas_penerima']);
 
-        $this->assertArrayHasKey('manager_administrasi', $item->data);
-        $this->assertEquals('Basuki Murdi Hartono, SH.', $item->data['manager_administrasi']);
-        $this->assertEquals('197904052005011002', $item->data['nip_manager_administrasi']);
+        $this->assertArrayHasKey('manager_administrasi', $meta);
+        $this->assertEquals('Basuki Murdi Hartono, SH.', $meta['manager_administrasi']);
+        $this->assertEquals('197904052005011002', $meta['nip_manager_administrasi']);
 
-        $this->assertArrayHasKey('kepala_balai', $item->data);
-        $this->assertEquals('Yogi Abaso Mataram, S.Si., Apt', $item->data['kepala_balai']);
-        $this->assertEquals('198101242009121002', $item->data['nip_kepala_balai']);
+        $this->assertArrayHasKey('kepala_balai', $meta);
+        $this->assertEquals('Yogi Abaso Mataram, S.Si., Apt', $meta['kepala_balai']);
+        $this->assertEquals('198101242009121002', $meta['nip_kepala_balai']);
 
         // 2. Render HTML view of SPU PDF and assert exact 3 signatories
         $html = view('pdf.laporan-pengujian', [
@@ -243,5 +244,38 @@ class PengujianTest extends TestCase
         $pdfResponse = $this->get("/item/{$item->id}/pdf");
         $pdfResponse->assertStatus(200);
         $pdfResponse->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_spu_batch_pdf_renders_three_columns_landscape_and_signatories()
+    {
+        $this->post('/load-sample-pdf');
+        $item = PengujianItem::first();
+
+        $batchResponse = $this->get("/batch/{$item->batch_id}/pdf-all");
+        $batchResponse->assertStatus(200);
+        $batchResponse->assertHeader('content-type', 'application/pdf');
+
+        $items = PengujianItem::where('batch_id', $item->batch_id)->get();
+        $html = view('pdf.batch-pengujian', [
+            'items' => $items,
+            'headers' => ['No', 'Identitas Sample', 'Lokasi Sampel'],
+            'batchId' => $item->batch_id,
+            'filename' => $item->filename,
+            'sheetName' => $item->sheet_name,
+            'orientation' => 'landscape',
+        ])->render();
+
+        // Check 3 specific columns
+        $this->assertStringContainsString('Identitas Sample', $html);
+        $this->assertStringContainsString('Lokasi Sampel', $html);
+
+        // Check signatories in batch PDF
+        $this->assertStringContainsString('Nirmala Nurhasanah, STP', $html);
+        $this->assertStringContainsString('Basuki Murdi Hartono, SH.', $html);
+        $this->assertStringContainsString('Yogi Abaso Mataram, S.Si., Apt', $html);
+
+        // Verify that internal metadata fields do not appear as table headers
+        $this->assertStringNotContainsString('<th>manager_administrasi</th>', $html);
+        $this->assertStringNotContainsString('<th>kepala_balai</th>', $html);
     }
 }

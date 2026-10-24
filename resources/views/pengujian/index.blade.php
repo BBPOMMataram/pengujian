@@ -405,8 +405,21 @@
                                 <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-center w-12">No</th>
                                 
                                 <!-- DYNAMIC DATA HEADERS FROM EXCEL -->
+                                @php
+                                    $ignoredCols = [
+                                        'manager_administrasi', 'nip_manager_administrasi',
+                                        'kepala_balai', 'nip_kepala_balai',
+                                        'petugas_penerima', 'nip_petugas_penerima',
+                                        'tanggal_spu', 'no_spu', 'nomor spu', 'nomor_spu',
+                                        '_meta'
+                                    ];
+                                @endphp
                                 @foreach($headers as $h)
-                                    @if(!str_contains(strtolower($h), 'qr'))
+                                    @php
+                                        $hLower = strtolower(trim($h));
+                                        $isIgnored = str_starts_with($h, '_') || in_array($hLower, $ignoredCols);
+                                    @endphp
+                                    @if(!str_contains($hLower, 'qr') && !$isIgnored)
                                         <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-slate-800 min-w-[180px]">
                                             @if(str_contains($h, ' - '))
                                                 @php [$mainH, $subH] = explode(' - ', $h, 2); @endphp
@@ -439,7 +452,11 @@
 
                                     <!-- DYNAMIC DATA CELLS -->
                                     @foreach($headers as $h)
-                                        @if(!str_contains(strtolower($h), 'qr'))
+                                        @php
+                                            $hLower = strtolower(trim($h));
+                                            $isIgnored = str_starts_with($h, '_') || in_array($hLower, $ignoredCols);
+                                        @endphp
+                                        @if(!str_contains($hLower, 'qr') && !$isIgnored)
                                             <td class="dt-cell-data py-3 px-3.5 text-slate-900 font-medium max-w-sm">
                                                 @php
                                                     $val = $item->data[$h] ?? '-';
