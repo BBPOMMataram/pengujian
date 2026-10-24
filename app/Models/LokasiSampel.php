@@ -82,6 +82,11 @@ class LokasiSampel extends Model
 
         $cleanCatatan = trim($catatan ?? '');
 
+        // Abaikan artefak header tabel seperti TKMP / TKMPS
+        if (preg_match('/^T\s*K\s*M\s*P\s*S?$/i', $cleanCatatan)) {
+            $cleanCatatan = '';
+        }
+
         // 1. Catatan kosong atau strip
         if ($cleanCatatan === '' || $cleanCatatan === '-') {
             return $isNarkotika ? ($master['K'] ?? 'Kimia') : '-';
