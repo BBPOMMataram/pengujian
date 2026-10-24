@@ -246,10 +246,28 @@ class PengujianTest extends TestCase
         $pdfResponse->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_spu_batch_pdf_renders_three_columns_landscape_and_signatories()
+    public function test_spu_batch_pdf_renders_spu_format_and_decoded_catatan()
     {
         $this->post('/load-sample-pdf');
         $item = PengujianItem::first();
+
+        // Uji parsing kode K2,M2,A1 dengan teks cluster di belakangnya
+        $sampleCatatan = 'K2,M2,A1 Cluster B/ Compliance Importir/ Uji Keamanan dan Mutu';
+        $decodedLokasi = \App\Models\LokasiSampel::parseCatatan($sampleCatatan, 'Kosmetika', 'Kosmetika');
+        $this->assertEquals('Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel', $decodedLokasi);
+
+        // Uji ekstrasi jumlah sampel T K M P S
+        $counts = \App\Models\LokasiSampel::extractCounts($sampleCatatan, 'Kosmetika', 'Kosmetika');
+        $this->assertEquals(5, $counts['T']);
+        $this->assertEquals('2', $counts['K']);
+        $this->assertEquals('2', $counts['M']);
+        $this->assertEquals('1', $counts['A']);
+
+        // Update item data dengan catatan baru untuk memverifikasi rendering view PDF
+        $itemData = $item->data;
+        $itemData['Catatan'] = $sampleCatatan;
+        $item->data = $itemData;
+        $item->save();
 
         $batchResponse = $this->get("/batch/{$item->batch_id}/pdf-all");
         $batchResponse->assertStatus(200);
@@ -258,16 +276,18 @@ class PengujianTest extends TestCase
         $items = PengujianItem::where('batch_id', $item->batch_id)->get();
         $html = view('pdf.batch-pengujian', [
             'items' => $items,
-            'headers' => ['No', 'Identitas Sample', 'Lokasi Sampel'],
+            'headers' => ['No', 'Kode Sampel', 'Identitas Sample', 'Keterangan Sampling', 'Jumlah Sampel', 'Rekomendasi Uji', 'No. Surat Petugas Sampling', 'Catatan'],
             'batchId' => $item->batch_id,
             'filename' => $item->filename,
             'sheetName' => $item->sheet_name,
             'orientation' => 'landscape',
         ])->render();
 
-        // Check 3 specific columns
+        // Check SPU columns & decoded catatan
         $this->assertStringContainsString('Identitas Sample', $html);
-        $this->assertStringContainsString('Lokasi Sampel', $html);
+        $this->assertStringContainsString('Rekomendasi Uji', $html);
+        $this->assertStringContainsString('Catatan', $html);
+        $this->assertStringContainsString('Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel', $html);
 
         // Check signatories in batch PDF
         $this->assertStringContainsString('Nirmala Nurhasanah, STP', $html);

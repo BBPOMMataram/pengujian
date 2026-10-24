@@ -49,6 +49,27 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'kode_lokasi' => 'A',
+                'name' => 'Arsip',
+                'keterangan' => 'Penyimpanan Sampel Arsip',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'kode_lokasi' => 'P',
+                'name' => 'Penandaan',
+                'keterangan' => 'Pengujian / Evaluasi Penandaan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'kode_lokasi' => 'S',
+                'name' => 'Sisa Sampel',
+                'keterangan' => 'Penyimpanan Sisa Sampel',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ];
 
         foreach ($defaults as $item) {

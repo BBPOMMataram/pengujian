@@ -6,13 +6,13 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 8mm 12mm 10mm 12mm;
+            margin: 8mm 10mm 10mm 10mm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 7.5pt;
             color: #000000;
-            font-size: 8pt;
-            line-height: 1.35;
+            line-height: 1.3;
         }
 
         /* HEADER DOKUMEN RESMI SPU */
@@ -27,8 +27,8 @@
             text-align: left;
         }
         .spu-logo-img {
-            max-height: 48px;
-            max-width: 65px;
+            max-height: 46px;
+            max-width: 62px;
             display: block;
         }
         .spu-title-td {
@@ -43,39 +43,39 @@
             letter-spacing: 0.3px;
         }
         .spu-doc-no {
-            font-size: 10.5pt;
+            font-size: 10pt;
             font-weight: bold;
             color: #000;
-            margin-top: 2px;
+            margin-top: 1px;
             letter-spacing: 0.5px;
         }
         .spu-qr-td {
-            width: 85px;
+            width: 75px;
             vertical-align: middle;
             text-align: right;
         }
 
         /* PREAMBLE & METADATA */
         .spu-preamble {
-            margin-top: 4px;
-            margin-bottom: 6px;
-            font-size: 8.5pt;
-            line-height: 1.35;
+            margin-top: 3px;
+            margin-bottom: 4px;
+            font-size: 8pt;
+            line-height: 1.3;
         }
         .spu-preamble p {
             margin: 0 0 2px 0;
         }
         .spu-meta-table {
             border-collapse: collapse;
-            font-size: 8.5pt;
-            margin: 2px 0;
+            font-size: 8pt;
+            margin: 1px 0;
         }
         .spu-meta-table td {
             padding: 1px 0;
             vertical-align: top;
         }
         .spu-meta-lbl {
-            width: 105px;
+            width: 95px;
             color: #000;
         }
         .spu-meta-sep {
@@ -89,101 +89,107 @@
         }
 
         .spu-instruction-text {
-            font-size: 8.5pt;
-            margin: 4px 0 6px 0;
+            font-size: 8pt;
+            margin: 3px 0 5px 0;
             color: #000;
         }
 
-        /* TABEL SURAT PERMINTAAN UJI (3 KOLOM RESMI SESUAI PERMINTAAN) */
-        .spu-table {
+        /* TABEL UTAMA SPU (SESUAI DOKUMEN RESMI SPU BBPOM MATARAM) */
+        .spu-main-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 8pt;
-            margin-top: 4px;
-            margin-bottom: 12px;
+            font-size: 7.2pt;
+            margin-top: 3px;
+            margin-bottom: 4px;
         }
-        .spu-table th {
+        .spu-main-table th {
             border: 1px solid #000000;
             background-color: #ffffff;
             color: #000000;
             font-weight: bold;
-            padding: 5px 6px;
+            padding: 3.5px 3px;
             text-align: left;
             vertical-align: middle;
-            font-size: 8pt;
+            font-size: 7.2pt;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
         }
-        .spu-table th.center {
+        .spu-main-table th.center {
             text-align: center;
         }
-        .spu-table td {
+        .spu-main-table td {
             border: 1px solid #000000;
-            padding: 6px 6px;
+            padding: 3.5px 3px;
             vertical-align: top;
             color: #000000;
             word-wrap: break-word;
             word-break: break-all;
             overflow-wrap: break-word;
         }
-        .spu-table td.center {
+        .spu-main-table td.center {
             text-align: center;
         }
 
-        .sample-code-header {
-            font-weight: bold;
-            margin-bottom: 4px;
-            color: #000;
-        }
         .bullet-list {
             margin: 0;
-            padding-left: 14px;
+            padding-left: 9px;
             list-style-type: disc;
         }
         .bullet-list li {
-            margin-bottom: 3px;
-            line-height: 1.35;
+            margin-bottom: 1px;
+            line-height: 1.25;
+        }
+
+        .table-footer-note {
+            font-size: 6.5pt;
+            color: #334155;
+            margin-top: 2px;
+            margin-bottom: 6px;
+            line-height: 1.25;
         }
 
         /* TANDA TANGAN RESMI 3 PEJABAT SPU BBPOM MATARAM */
         .sign-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 10px;
             page-break-inside: avoid;
         }
         .sign-table td {
             width: 33.33%;
             text-align: center;
             vertical-align: top;
-            font-size: 8.5pt;
+            font-size: 8pt;
             color: #000000;
-            padding: 0 8px;
+            padding: 0 6px;
             border: none;
         }
         .sign-title {
             line-height: 1.25;
-            min-height: 48px;
+            min-height: 42px;
         }
         .sign-space {
-            height: 52px;
+            height: 46px;
         }
         .sign-name {
             font-weight: bold;
             text-decoration: underline;
             color: #000000;
-            font-size: 9pt;
+            font-size: 8.5pt;
         }
         .sign-nip {
-            font-size: 8pt;
+            font-size: 7.5pt;
             color: #000000;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         .footer-note {
-            font-size: 7pt;
+            font-size: 6.5pt;
             color: #64748b;
             font-style: italic;
-            margin-top: 10px;
+            margin-top: 8px;
             text-align: center;
         }
     </style>
@@ -288,7 +294,7 @@
                 @endif
             </td>
             <td class="spu-title-td">
-                <div class="spu-doc-title">Surat Permintaan Uji</div>
+                <div class="spu-doc-title">SURAT PERMINTAAN UJI</div>
                 <div class="spu-doc-no">{{ $spuNum }}</div>
             </td>
             <td class="spu-qr-td"></td>
@@ -321,13 +327,18 @@
         Untuk dilakukan pengujian sesuai ruang lingkup
     </div>
 
-    <!-- TABEL UTAMA SPU: HANYA 3 KOLOM SESUAI INSTRUKSI (No, Identitas Sampel, Lokasi Sampel) -->
-    <table class="spu-table">
+    <!-- TABEL UTAMA SPU LENGKAP: SESUAI FORMAT SPU RESMI (SEPERTI LAPORAN-PENGUJIAN & GAMBAR USER) -->
+    <table class="spu-main-table">
         <thead>
             <tr>
-                <th class="center" style="width: 38px;">No.</th>
-                <th style="width: 67%;">Identitas Sample</th>
-                <th style="width: 28%;">Lokasi Sampel</th>
+                <th style="width: 24px;" class="center">No.</th>
+                <th style="width: 105px;">Kode Sampel<br/><span style="font-size: 6.2pt; font-weight: normal;">Nomor Manual</span></th>
+                <th style="width: 240px;">Identitas Sample</th>
+                <th style="width: 160px;">Keterangan Sampling</th>
+                <th style="width: 68px;" class="center">Jumlah Sampel<br/><span style="font-size: 6.2pt; letter-spacing: 2px;">T K M P S</span></th>
+                <th style="width: 75px;">Rekomendasi Uji</th>
+                <th style="width: 165px;">No. Surat Petugas Sampling</th>
+                <th style="width: 95px;">Catatan</th>
             </tr>
         </thead>
         <tbody>
@@ -335,47 +346,143 @@
                 @php
                     $d = is_array($item->data) ? $item->data : [];
 
-                    // Ekstraksi Identitas Sampel
+                    // 1. Kode & Nomor Manual
                     $kode = $d['Kode Sampel'] ?? $d['kode_sampel'] ?? ($item->display_title ?: '-');
+                    $noManual = $d['Nomor Manual'] ?? $d['nomor_manual'] ?? '-';
+
+                    // 2. Identitas Sampel
                     $namaProd = $d['Nama Produk / Sampel'] ?? $d['Nama Produk'] ?? $d['nama_produk'] ?? $d['nama_sampel'] ?? $d['Nama Sampel'] ?? '-';
                     $rawNie = $d['nie'] ?? $d['NIE'] ?? $d['nomor_izin_edar'] ?? '';
                     $nieVal = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
+                    $merkVal = $d['merk'] ?? $d['Merk'] ?? '-';
                     $jenisVal = $d['jenis_sampel'] ?? $d['Jenis Sampel'] ?? '-';
+                    $komposisiVal = $d['komposisi'] ?? $d['Komposisi'] ?? null;
+                    $bentukVal = $d['bentuk_sediaan'] ?? $d['Bentuk Sediaan'] ?? null;
+                    $nettoVal = $d['netto'] ?? $d['Netto'] ?? null;
 
-                    // Ekstraksi Lokasi Sampel (diambil dari data kolom catatan atau aturan khusus narkotika)
-                    $catatanVal = $d['catatan'] ?? $d['Catatan'] ?? '';
-                    $lokasiVal = $d['lokasi_sampel'] ?? $d['Lokasi Sampel'] ?? '';
+                    // 3. Keterangan Sampling
+                    $kemasanVal = $d['keterangan_sampling'] ?? $d['Keterangan Sampling'] ?? $d['kemasan'] ?? $d['Kemasan'] ?? null;
+                    $tempatVal = $d['tempat_sampling'] ?? $d['Tempat Sampling'] ?? null;
+                    $tglSamplingVal = $d['tanggal_sampling'] ?? $d['Tanggal Sampling'] ?? $d['tanggal_diterima'] ?? $d['Tanggal Diterima'] ?? null;
+                    $pengirimVal = $d['pengirim'] ?? $d['Pengirim'] ?? null;
 
-                    // Jika lokasi_sampel sudah dihitung oleh controller/import
-                    if (!empty($lokasiVal) && $lokasiVal !== '-') {
-                        $lokasiTampil = $lokasiVal;
-                    } elseif (!empty($catatanVal) && $catatanVal !== '-') {
-                        $lokasiTampil = $catatanVal;
-                    } elseif (str_contains(strtolower($jenisVal), 'narkotika') || str_contains(strtolower($komoditi), 'narkotika')) {
-                        $lokasiTampil = 'Kimia';
-                    } else {
-                        $lokasiTampil = '-';
+                    // 4. Catatan & Lokasi Sampel Ter-decode
+                    // Jika catatan berisi 'K2,M2,A1 Cluster B/ Compliance...'
+                    // maka Lokasi Sampel = 'Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel'
+                    $catatanRaw = $d['catatan'] ?? $d['Catatan'] ?? '-';
+                    $lokasiSampelParsed = \App\Models\LokasiSampel::parseCatatan($catatanRaw, $jenisVal, $komoditi);
+                    
+                    if ($lokasiSampelParsed === '-' && !empty($d['lokasi_sampel']) && $d['lokasi_sampel'] !== '-') {
+                        $lokasiSampelParsed = $d['lokasi_sampel'];
                     }
+
+                    // 5. Hitung Jumlah Sampel (T K M P S)
+                    $counts = \App\Models\LokasiSampel::extractCounts($catatanRaw, $jenisVal, $komoditi, 1);
+                    $countT = $d['Jumlah Sampel'] ?? $d['jumlah_sampel'] ?? $counts['T'];
+                    $countK = $counts['K'];
+                    $countM = $counts['M'];
+                    $countP = $counts['P'];
+                    $countS = $counts['S'];
+
+                    // 6. Rekomendasi Uji & No Surat
+                    $rekomendasiVal = $d['rekomendasi_uji'] ?? $d['Rekomendasi Uji'] ?? null;
+                    $retainVal = $d['jumlah_retain'] ?? $d['Jumlah Retain Sampel'] ?? null;
+                    $noSuratVal = $d['no_surat'] ?? $d['No Surat Petugas Sampling'] ?? $d['no_surat_petugas_sampling'] ?? null;
+                    $noBillingVal = $d['no_billing'] ?? $d['No Billing'] ?? null;
+                    $catatanSuratVal = $d['catatan_surat'] ?? $d['Catatan Surat'] ?? null;
                 @endphp
                 <tr>
-                    <td class="center">{{ $index + 1 }}</td>
+                    <td class="center">{{ $d['No'] ?? ($index + 1) }}</td>
                     <td>
-                        @if(!empty($kode) && $kode !== '-')
-                            <div class="sample-code-header">Kode Sampel: {{ $kode }}</div>
+                        <strong>Kode Sampel:</strong><br/>
+                        <span style="font-family: monospace; font-size: 7.5pt; font-weight: bold;">{{ $kode }}</span>
+                        @if(!empty($noManual) && $noManual !== '-')
+                            <div style="font-size: 6.5pt; color: #334155; margin-top: 2px;">Nomor Manual: {{ $noManual }}</div>
                         @endif
+                    </td>
+                    <td>
                         <ul class="bullet-list">
                             <li><strong>Nama Produk:</strong> {{ $namaProd }}</li>
-                            <li><strong>NIE:</strong> {{ $nieVal }}</li>
+                            @if(!empty($nieVal) && $nieVal !== '-')
+                                <li><strong>NIE:</strong> {{ $nieVal }}</li>
+                            @endif
+                            @if(!empty($merkVal) && $merkVal !== '-')
+                                <li><strong>Merk:</strong> {{ $merkVal }}</li>
+                            @endif
                             <li><strong>Jenis Sampel:</strong> {{ $jenisVal }}</li>
+                            @if(!empty($komposisiVal) && $komposisiVal !== '-')
+                                <li><strong>Komposisi:</strong> {{ $komposisiVal }}</li>
+                            @endif
+                            @if(!empty($bentukVal) && $bentukVal !== '-')
+                                <li><strong>Bentuk Sediaan:</strong> {{ $bentukVal }}</li>
+                            @endif
+                            @if(!empty($nettoVal) && $nettoVal !== '-')
+                                <li><strong>Netto:</strong> {{ $nettoVal }}</li>
+                            @endif
+                            <li><strong>Evaluasi Penandaan:</strong> Tidak Ada</li>
                         </ul>
                     </td>
                     <td>
-                        {{ $lokasiTampil }}
+                        @if(!empty($kemasanVal) && $kemasanVal !== '-')
+                            <div style="margin-bottom: 2px;">{{ $kemasanVal }}</div>
+                        @endif
+                        <ul class="bullet-list">
+                            @if(!empty($tempatVal) && $tempatVal !== '-')
+                                <li><strong>Tempat Sampling:</strong> {{ $tempatVal }}</li>
+                            @endif
+                            @if(!empty($tglSamplingVal) && $tglSamplingVal !== '-')
+                                <li><strong>Tanggal Diterima Di TPS:</strong> {{ $tglSamplingVal }}</li>
+                            @endif
+                            @if(!empty($pengirimVal) && $pengirimVal !== '-')
+                                <li><strong>Pengirim:</strong> {{ $pengirimVal }}</li>
+                            @endif
+                        </ul>
+                    </td>
+                    <td class="center" style="font-family: monospace; font-size: 7.5pt; font-weight: bold; letter-spacing: 2px;">
+                        {{ $countT }} {{ $countK }} {{ $countM }} {{ $countP }} {{ $countS }}
+                    </td>
+                    <td>
+                        @if(!empty($rekomendasiVal) && $rekomendasiVal !== '-')
+                            <div>{{ $rekomendasiVal }}</div>
+                        @endif
+                        @if(!empty($retainVal) && $retainVal !== '-')
+                            <div style="font-size: 6.5pt; color: #334155; margin-top: 2px;">Jumlah Retain: {{ $retainVal }}</div>
+                        @endif
+                        @if(empty($rekomendasiVal) && empty($retainVal))
+                            -
+                        @endif
+                    </td>
+                    <td>
+                        <ul class="bullet-list">
+                            @if(!empty($noSuratVal) && $noSuratVal !== '-')
+                                <li><strong>No Surat:</strong> {{ $noSuratVal }}</li>
+                            @endif
+                            @if(!empty($noBillingVal) && $noBillingVal !== '-')
+                                <li><strong>No Billing:</strong> {{ $noBillingVal }}</li>
+                            @endif
+                            @if(!empty($catatanSuratVal) && $catatanSuratVal !== '-')
+                                <li>{{ $catatanSuratVal }}</li>
+                            @endif
+                        </ul>
+                        @if(empty($noSuratVal) && empty($noBillingVal) && empty($catatanSuratVal))
+                            -
+                        @endif
+                    </td>
+                    <td>
+                        <!-- KOLOM CATATAN: MENAMPILKAN LOKASI SAMPEL TER-DECODE (K2, M2, A1 -> KIMIA 2, MIKRO 2, ARSIP 1) -->
+                        <div style="font-weight: 600; color: #000;">
+                            {{ $lokasiSampelParsed }}
+                        </div>
                     </td>
                 </tr>
             @endforeach
         </tbody>
     </table>
+
+    <div class="table-footer-note">
+        <strong>Keterangan Jumlah Sampel:</strong><br/>
+        Jumlah T = Jumlah Total Sampel, Jumlah K = Jumlah Sampel Kimia, Jumlah M = Jumlah Sampel Mikro, Jumlah P = Jumlah Sampel Penandaan, Jumlah S = Jumlah Sisa Sampel
+    </div>
 
     <!-- TANDA TANGAN 3 PEJABAT RESMI SPU BBPOM MATARAM -->
     <table class="sign-table">

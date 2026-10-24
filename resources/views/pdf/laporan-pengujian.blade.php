@@ -272,8 +272,11 @@
         $komoditi = $dataArr['komoditi'] ?? $dataArr['Komoditi'] ?? ($jenisSampel ? (str_contains($jenisSampel, ' - ') ? explode(' - ', $jenisSampel)[0] : $jenisSampel) : 'Narkotika');
         $anggaran = $dataArr['anggaran'] ?? $dataArr['Anggaran'] ?? 'Pihak Ke 3 - Kepolisian';
         $asalSampling = $dataArr['asal_sampling'] ?? $dataArr['Asal Sampling'] ?? $dataArr['asal_sampel'] ?? 'Kepolisian';
-        $lokasiSampel = $dataArr['lokasi_sampel'] ?? $dataArr['Lokasi Sampel'] ?? 'Kimia';
         $catatan = $dataArr['catatan'] ?? $dataArr['Catatan'] ?? '-';
+        $lokasiSampel = \App\Models\LokasiSampel::parseCatatan($catatan, $jenisSampel, $komoditi);
+        if ($lokasiSampel === '-' && !empty($dataArr['lokasi_sampel']) && $dataArr['lokasi_sampel'] !== '-') {
+            $lokasiSampel = $dataArr['lokasi_sampel'];
+        }
 
         // 3. Identitas Fisik Sampel
         $kodeSampel = $dataArr['Kode Sampel'] ?? $dataArr['kode_sampel'] ?? ($item->display_title ?: '26.117.11.16.05.0731');
@@ -328,13 +331,15 @@
         $kepalaBalaiNip = $dataArr['nip_kepala_balai'] ?? '198101242009121002';
 
         // 7. Hitung Kode Jumlah Sampel (T K M P S)
-        $countT = 1;
-        $isKimia = str_contains(strtolower($lokasiSampel), 'kimia') || str_contains(strtolower($catatan), 'k1');
-        $isMikro = str_contains(strtolower($lokasiSampel), 'mikro') || str_contains(strtolower($catatan), 'm1');
-        $countK = $isKimia ? '1' : '-';
-        $countM = $isMikro ? '1' : '-';
-        $countP = '-';
-        $countS = '0';
+        $counts = \App\Models\LokasiSampel::extractCounts($catatan, $jenisSampel, $komoditi, 1);
+        $countT = $counts['T'];
+        $countK = $counts['K'];
+        $countM = $counts['M'];
+        $countP = $counts['P'];
+        $countS = $counts['S'];
+
+        $isKimia = ($countK !== '-' && (int)$countK > 0) || str_contains(strtolower($lokasiSampel), 'kimia');
+        $isMikro = ($countM !== '-' && (int)$countM > 0) || str_contains(strtolower($lokasiSampel), 'mikro');
     @endphp
 
     <!-- ================================================================ -->
