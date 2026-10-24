@@ -241,6 +241,53 @@ class PdfImportService
         $samples = [];
         $now = now();
 
+        // 0. Ekstraksi Metadata Header & Tanda Tangan Dokumen SPU
+        $spuNo = null;
+        if (preg_match('/(SPU\.[0-9A-Za-z\.\-\/]+)/i', $fullText, $spuM)) {
+            $spuNo = trim($spuM[1]);
+        } elseif (preg_match('/(SPU\.[0-9A-Za-z\.\-\/]+)/i', $filename, $spuM)) {
+            $spuNo = trim($spuM[1]);
+        }
+
+        $docAnggaran = null;
+        if (preg_match('/Anggaran\s*:\s*([^\n]+)/i', $fullText, $angM)) {
+            $docAnggaran = trim($angM[1]);
+        }
+
+        $docAsalSampling = null;
+        if (preg_match('/Asal Sampling\s*:\s*([^\n]+)/i', $fullText, $asalM)) {
+            $docAsalSampling = trim($asalM[1]);
+        }
+
+        $tanggalSpu = null;
+        if (preg_match('/Tanggal,\s*([0-9]+\s+[A-Za-z]+\s+[0-9]{4})/i', $fullText, $tglM)) {
+            $tanggalSpu = trim($tglM[1]);
+        }
+
+        // Default & Ekstraksi 3 Pejabat Resmi SPU
+        // 1. Pemohon / Pengirim Sampel (Petugas Penerima Sampel)
+        // 2. Penerima Sampel (Manager Administrasi)
+        // 3. Mengetahui (Kepala Balai)
+        $petugasPenerima = 'Nirmala Nurhasanah, STP';
+        $nipPetugasPenerima = '199205172023212054';
+        $managerAdministrasi = 'Basuki Murdi Hartono, SH.';
+        $nipManagerAdministrasi = '197904052005011002';
+        $kepalaBalai = 'Yogi Abaso Mataram, S.Si., Apt';
+        $nipKepalaBalai = '198101242009121002';
+
+        if (preg_match('/(Nirmala Nurhasanah[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $pm)) {
+            $petugasPenerima = trim($pm[1]);
+            $nipPetugasPenerima = trim($pm[2]);
+        }
+        if (preg_match('/(Basuki Murdi Hartono[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $bm)) {
+            $managerAdministrasi = trim($bm[1]);
+            $nipManagerAdministrasi = trim($bm[2]);
+        }
+        if (preg_match('/(Yogi Abaso Mataram[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $ym)) {
+            $kepalaBalai = trim($ym[1]);
+            $nipKepalaBalai = trim($ym[2]);
+        }
+
         // 1. Ekstraksi dari Tabel Halaman 1 (Tabel Surat Permintaan Uji)
         // Pola fleksibel mendukung '1 Kode Sampel:' maupun '1Kode Sampel:'
         $spuPattern = '/(?:^|\n)\s*(\d+)\s*Kode Sampel[:\s]*\n?([0-9A-Za-z\.\-\/]+)(.*?)(?=(?:\n\s*\d+\s*Kode Sampel[:\s]*)|\nKeterangan Jumlah Sampel|\nDAFTAR LAMPIRAN SAMPEL|$)/s';
@@ -331,6 +378,11 @@ class PdfImportService
                     $noBilling = trim($nb[1]);
                 }
 
+                $komposisi = '';
+                if (preg_match('/•\s*Komposisi[:\s]*([^•\n]+)/i', $body, $kpm)) {
+                    $komposisi = trim($kpm[1]);
+                }
+
                 $samples[$code] = [
                     'row_no' => $rowNo,
                     'kode_sampel' => $code,
@@ -346,6 +398,7 @@ class PdfImportService
                     'pengirim' => $pengirim,
                     'no_surat' => $noSurat,
                     'no_billing' => $noBilling,
+                    'komposisi' => $komposisi,
                 ];
             }
         }
@@ -477,6 +530,30 @@ class PdfImportService
             if (!empty($data['keterangan_sampling'])) {
                 $mappedData['Keterangan Sampling'] = $data['keterangan_sampling'];
             }
+            if (!empty($data['komposisi'])) {
+                $mappedData['Komposisi'] = $data['komposisi'];
+            }
+
+            // SPU Document Metadata & Pejabat Penandatangan Resmi BBPOM
+            if ($spuNo) {
+                $mappedData['Nomor SPU'] = $spuNo;
+                $mappedData['no_spu'] = $spuNo;
+            }
+            if ($docAnggaran) {
+                $mappedData['Anggaran'] = $docAnggaran;
+            }
+            if ($docAsalSampling) {
+                $mappedData['Asal Sampling'] = $docAsalSampling;
+            }
+            if ($tanggalSpu) {
+                $mappedData['tanggal_spu'] = $tanggalSpu;
+            }
+            $mappedData['petugas_penerima'] = $petugasPenerima;
+            $mappedData['nip_petugas_penerima'] = $nipPetugasPenerima;
+            $mappedData['manager_administrasi'] = $managerAdministrasi;
+            $mappedData['nip_manager_administrasi'] = $nipManagerAdministrasi;
+            $mappedData['kepala_balai'] = $kepalaBalai;
+            $mappedData['nip_kepala_balai'] = $nipKepalaBalai;
 
             // Susun isi QR Code memuat Kode Sampel, Nama Produk, Jenis Sampel lengkap, NIE, dan Lokasi Sampel
             $qrLines = [];

@@ -195,12 +195,12 @@
             page-break-inside: avoid;
         }
         .sign-table td {
-            width: 50%;
+            width: 33.33%;
             vertical-align: top;
             text-align: center;
             font-size: 8pt;
             border: none;
-            padding: 0;
+            padding: 0 4px;
         }
         .footer-note {
             font-size: 6.5pt;
@@ -369,22 +369,51 @@
         </tbody>
     </table>
 
-    <!-- TANDA TANGAN RESMI -->
+    <!-- TANDA TANGAN RESMI 3 PEJABAT SPU BBPOM MATARAM -->
+    @php
+        $bulanIndo = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $nowB = now();
+        $tglBatchFormatted = $nowB->day . ' ' . ($bulanIndo[$nowB->month] ?? $nowB->format('F')) . ' ' . $nowB->year;
+
+        // Ambil data pejabat dari item pertama jika tersedia
+        $fItem = $items->first();
+        $fData = ($fItem && is_array($fItem->data)) ? $fItem->data : [];
+        $petugasPenerimaB = $fData['petugas_penerima'] ?? $fData['Petugas Penerima'] ?? 'Nirmala Nurhasanah, STP';
+        $nipPetugasPenerimaB = $fData['nip_petugas_penerima'] ?? '199205172023212054';
+        $managerAdminB = $fData['manager_administrasi'] ?? $fData['Manager Administrasi'] ?? 'Basuki Murdi Hartono, SH.';
+        $nipManagerAdminB = $fData['nip_manager_administrasi'] ?? '197904052005011002';
+        $kepalaBalaiB = $fData['kepala_balai'] ?? $fData['Kepala Balai'] ?? 'Yogi Abaso Mataram, S.Si., Apt';
+        $nipKepalaBalaiB = $fData['nip_kepala_balai'] ?? '198101242009121002';
+    @endphp
     <table class="sign-table">
         <tr>
             <td>
-                Mengetahui,<br/>
-                <strong>Penyelia Laboratorium Pengujian</strong>
+                Tanggal, {{ $tglBatchFormatted }}<br/>
+                Pemohon / Pengirim Sampel<br/>
+                <strong>(Petugas Penerima Sampel)</strong>
                 <div style="height: 38px;"></div>
-                <strong>Apt. I Made Sujana, S.Farm.</strong><br/>
-                <span style="color: #64748b; font-size: 7pt;">NIP. 19840315 200812 1 002</span>
+                <strong style="text-decoration: underline;">{{ $petugasPenerimaB }}</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. {{ $nipPetugasPenerimaB }}</span>
             </td>
             <td>
-                Mataram, {{ date('d F Y') }}<br/>
-                <strong>Kepala Balai Besar POM di Mataram</strong>
+                Tanggal, {{ $tglBatchFormatted }}<br/>
+                Penerima Sampel<br/>
+                <strong>(Manager Administrasi)</strong>
                 <div style="height: 38px;"></div>
-                <strong>Yosef Dwi Irwan, S.Si., Apt.</strong><br/>
-                <span style="color: #64748b; font-size: 7pt;">NIP. 19780512 200212 1 001</span>
+                <strong style="text-decoration: underline;">{{ $managerAdminB }}</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. {{ $nipManagerAdminB }}</span>
+            </td>
+            <td>
+                Tanggal, {{ $tglBatchFormatted }}<br/>
+                Mengetahui<br/>
+                <strong>(Kepala Balai)</strong>
+                <div style="height: 38px;"></div>
+                <strong style="text-decoration: underline;">{{ $kepalaBalaiB }}</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. {{ $nipKepalaBalaiB }}</span>
             </td>
         </tr>
     </table>

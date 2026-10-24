@@ -189,4 +189,59 @@ class PengujianTest extends TestCase
         $this->assertEquals('-', $item3->data['Lokasi Sampel']);
         $this->assertStringContainsString('Lokasi Sampel: -', $item3->qr_content);
     }
+
+    public function test_spu_pdf_renders_three_official_signatories_and_spu_layout()
+    {
+        $this->post('/load-sample-pdf');
+        $item = PengujianItem::first();
+
+        // 1. Assert item has official SPU metadata & 3 signatories
+        $this->assertArrayHasKey('petugas_penerima', $item->data);
+        $this->assertEquals('Nirmala Nurhasanah, STP', $item->data['petugas_penerima']);
+        $this->assertEquals('199205172023212054', $item->data['nip_petugas_penerima']);
+
+        $this->assertArrayHasKey('manager_administrasi', $item->data);
+        $this->assertEquals('Basuki Murdi Hartono, SH.', $item->data['manager_administrasi']);
+        $this->assertEquals('197904052005011002', $item->data['nip_manager_administrasi']);
+
+        $this->assertArrayHasKey('kepala_balai', $item->data);
+        $this->assertEquals('Yogi Abaso Mataram, S.Si., Apt', $item->data['kepala_balai']);
+        $this->assertEquals('198101242009121002', $item->data['nip_kepala_balai']);
+
+        // 2. Render HTML view of SPU PDF and assert exact 3 signatories
+        $html = view('pdf.laporan-pengujian', [
+            'item' => $item,
+            'qrBase64' => base64_encode('<svg></svg>'),
+            'orientation' => 'landscape',
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ])->render();
+
+        // Signatory 1: Pemohon / Pengirim Sampel (Petugas Penerima Sampel)
+        $this->assertStringContainsString('Pemohon / Pengirim Sampel', $html);
+        $this->assertStringContainsString('(Petugas Penerima Sampel)', $html);
+        $this->assertStringContainsString('Nirmala Nurhasanah, STP', $html);
+        $this->assertStringContainsString('199205172023212054', $html);
+
+        // Signatory 2: Penerima Sampel (Manager Administrasi)
+        $this->assertStringContainsString('Penerima Sampel', $html);
+        $this->assertStringContainsString('(Manager Administrasi)', $html);
+        $this->assertStringContainsString('Basuki Murdi Hartono, SH.', $html);
+        $this->assertStringContainsString('197904052005011002', $html);
+
+        // Signatory 3: Mengetahui (Kepala Balai)
+        $this->assertStringContainsString('Mengetahui', $html);
+        $this->assertStringContainsString('(Kepala Balai)', $html);
+        $this->assertStringContainsString('Yogi Abaso Mataram, S.Si., Apt', $html);
+        $this->assertStringContainsString('198101242009121002', $html);
+
+        // Assert SPU Sections
+        $this->assertStringContainsString('DAFTAR LAMPIRAN SAMPEL', $html);
+        $this->assertStringContainsString('LABEL KODE SAMPEL', $html);
+        $this->assertStringContainsString('BALAI BESAR POM DI MATARAM', $html);
+
+        // 3. Test actual PDF binary stream endpoint
+        $pdfResponse = $this->get("/item/{$item->id}/pdf");
+        $pdfResponse->assertStatus(200);
+        $pdfResponse->assertHeader('content-type', 'application/pdf');
+    }
 }

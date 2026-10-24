@@ -213,12 +213,12 @@
             page-break-inside: avoid;
         }
         .sign-table td {
-            width: 50%;
+            width: 33.33%;
             vertical-align: top;
             text-align: center;
             font-size: 7.5pt;
             border: none;
-            padding: 0;
+            padding: 0 4px;
         }
         .footer-note {
             font-size: 6.5pt;
@@ -376,22 +376,48 @@
                 </tbody>
             </table>
 
-            <!-- TANDA TANGAN DI AKHIR SETIAP BARIS SAMPEL -->
+            <!-- TANDA TANGAN DI AKHIR SETIAP BARIS SAMPEL (3 PEJABAT SPU) -->
+            @php
+                $bulanIndoV = [
+                    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                    9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                ];
+                $nowV = now();
+                $tglVFormatted = $nowV->day . ' ' . ($bulanIndoV[$nowV->month] ?? $nowV->format('F')) . ' ' . $nowV->year;
+                $iData = is_array($item->data) ? $item->data : [];
+                $petugasV = $iData['petugas_penerima'] ?? $iData['Petugas Penerima'] ?? 'Nirmala Nurhasanah, STP';
+                $nipPetugasV = $iData['nip_petugas_penerima'] ?? '199205172023212054';
+                $managerV = $iData['manager_administrasi'] ?? $iData['Manager Administrasi'] ?? 'Basuki Murdi Hartono, SH.';
+                $nipManagerV = $iData['nip_manager_administrasi'] ?? '197904052005011002';
+                $kepalaV = $iData['kepala_balai'] ?? $iData['Kepala Balai'] ?? 'Yogi Abaso Mataram, S.Si., Apt';
+                $nipKepalaV = $iData['nip_kepala_balai'] ?? '198101242009121002';
+            @endphp
             <table class="sign-table">
                 <tr>
                     <td>
-                        Mengetahui,<br/>
-                        <strong>Penyelia Laboratorium Pengujian</strong>
+                        Tanggal, {{ $tglVFormatted }}<br/>
+                        Pemohon / Pengirim Sampel<br/>
+                        <strong>(Petugas Penerima Sampel)</strong>
                         <div style="height: 38px;"></div>
-                        <strong>Apt. I Made Sujana, S.Farm.</strong><br/>
-                        <span style="color: #64748b; font-size: 6.5pt;">NIP. 19840315 200812 1 002</span>
+                        <strong style="text-decoration: underline;">{{ $petugasV }}</strong><br/>
+                        <span style="color: #334155; font-size: 6.5pt;">NIP. {{ $nipPetugasV }}</span>
                     </td>
                     <td>
-                        Mataram, {{ date('d F Y') }}<br/>
-                        <strong>Kepala Balai Besar POM di Mataram</strong>
+                        Tanggal, {{ $tglVFormatted }}<br/>
+                        Penerima Sampel<br/>
+                        <strong>(Manager Administrasi)</strong>
                         <div style="height: 38px;"></div>
-                        <strong>Yosef Dwi Irwan, S.Si., Apt.</strong><br/>
-                        <span style="color: #64748b; font-size: 6.5pt;">NIP. 19780512 200212 1 001</span>
+                        <strong style="text-decoration: underline;">{{ $managerV }}</strong><br/>
+                        <span style="color: #334155; font-size: 6.5pt;">NIP. {{ $nipManagerV }}</span>
+                    </td>
+                    <td>
+                        Tanggal, {{ $tglVFormatted }}<br/>
+                        Mengetahui<br/>
+                        <strong>(Kepala Balai)</strong>
+                        <div style="height: 38px;"></div>
+                        <strong style="text-decoration: underline;">{{ $kepalaV }}</strong><br/>
+                        <span style="color: #334155; font-size: 6.5pt;">NIP. {{ $nipKepalaV }}</span>
                     </td>
                 </tr>
             </table>

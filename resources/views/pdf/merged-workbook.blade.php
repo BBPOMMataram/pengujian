@@ -249,12 +249,12 @@
             page-break-inside: avoid;
         }
         .sign-table td {
-            width: 50%;
+            width: 33.33%;
             vertical-align: top;
             text-align: center;
             font-size: 8pt;
             border: none;
-            padding: 0;
+            padding: 0 4px;
         }
         .footer-note {
             font-size: 6.5pt;
@@ -495,22 +495,41 @@
         @endif
     @endforeach
 
-    <!-- TANDA TANGAN DI AKHIR LAPORAN GABUNGAN -->
+    <!-- TANDA TANGAN DI AKHIR LAPORAN GABUNGAN (3 PEJABAT SPU) -->
+    @php
+        $bulanIndoM = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $nowM = now();
+        $tglMFormatted = $nowM->day . ' ' . ($bulanIndoM[$nowM->month] ?? $nowM->format('F')) . ' ' . $nowM->year;
+    @endphp
     <table class="sign-table">
         <tr>
             <td>
-                Mengetahui,<br/>
-                <strong>Penyelia Laboratorium Pengujian</strong>
+                Tanggal, {{ $tglMFormatted }}<br/>
+                Pemohon / Pengirim Sampel<br/>
+                <strong>(Petugas Penerima Sampel)</strong>
                 <div style="height: 38px;"></div>
-                <strong>Apt. I Made Sujana, S.Farm.</strong><br/>
-                <span style="color: #64748b; font-size: 7pt;">NIP. 19840315 200812 1 002</span>
+                <strong style="text-decoration: underline;">Nirmala Nurhasanah, STP</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. 199205172023212054</span>
             </td>
             <td>
-                Mataram, {{ date('d F Y') }}<br/>
-                <strong>Kepala Balai Besar POM di Mataram</strong>
+                Tanggal, {{ $tglMFormatted }}<br/>
+                Penerima Sampel<br/>
+                <strong>(Manager Administrasi)</strong>
                 <div style="height: 38px;"></div>
-                <strong>Yosef Dwi Irwan, S.Si., Apt.</strong><br/>
-                <span style="color: #64748b; font-size: 7pt;">NIP. 19780512 200212 1 001</span>
+                <strong style="text-decoration: underline;">Basuki Murdi Hartono, SH.</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. 197904052005011002</span>
+            </td>
+            <td>
+                Tanggal, {{ $tglMFormatted }}<br/>
+                Mengetahui<br/>
+                <strong>(Kepala Balai)</strong>
+                <div style="height: 38px;"></div>
+                <strong style="text-decoration: underline;">Yogi Abaso Mataram, S.Si., Apt</strong><br/>
+                <span style="color: #334155; font-size: 7pt;">NIP. 198101242009121002</span>
             </td>
         </tr>
     </table>
