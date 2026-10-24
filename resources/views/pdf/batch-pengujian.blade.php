@@ -352,13 +352,12 @@
         <thead>
             <tr>
                 <th style="width: 24px;" class="center">No.</th>
-                <th style="width: 110px;">Kode Sampel<br/><span style="font-size: 6.5pt; font-weight: normal;">Nomor Manual</span></th>
-                <th style="width: 250px;">Identitas Sample</th>
-                <th style="width: 170px;">Keterangan Sampling</th>
+                <th style="width: 115px;">Kode Sampel<br/><span style="font-size: 6.5pt; font-weight: normal;">Nomor Manual</span></th>
+                <th style="width: 260px;">Identitas Sample</th>
+                <th style="width: 180px;">Keterangan Sampling</th>
                 <th style="width: 72px;" class="center">Jumlah Sampel<br/><span style="font-size: 6.5pt; letter-spacing: 2px;">T K M P S</span></th>
-                <th style="width: 70px;">Keterangan Tambahan</th>
-                <th style="width: 170px;">No. Surat Petugas Sampling</th>
-                <th style="width: 75px;">Catatan</th>
+                <th style="width: 175px;">No. Surat Petugas Sampling</th>
+                <th style="width: 115px;">Lokasi Sampel</th>
             </tr>
         </thead>
         <tbody>
@@ -453,7 +452,6 @@
                     <td class="center" style="font-family: monospace; font-size: 8pt; font-weight: bold; letter-spacing: 2.5px;">
                         {{ $countT }} {{ $countK }} {{ $countM }} {{ $countP }} {{ $countS }}
                     </td>
-                    <td>{{ (!empty($ketTambahan) && $ketTambahan !== '-') ? $ketTambahan : '-' }}</td>
                     <td>
                         @if((!empty($noSurat) && $noSurat !== '-') || (!empty($noBilling) && $noBilling !== '-') || !empty($dataArr['Catatan Surat']))
                             <ul class="bullet-list">

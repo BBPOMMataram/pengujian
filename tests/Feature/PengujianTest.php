@@ -285,8 +285,8 @@ class PengujianTest extends TestCase
 
         // Check SPU columns & decoded catatan
         $this->assertStringContainsString('Identitas Sample', $html);
-        $this->assertStringContainsString('Keterangan Tambahan', $html);
-        $this->assertStringContainsString('Catatan', $html);
+        $this->assertStringNotContainsString('Keterangan Tambahan', $html);
+        $this->assertStringContainsString('Lokasi Sampel', $html);
         $this->assertStringContainsString('Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel', $html);
 
         // Check signatories in batch PDF
