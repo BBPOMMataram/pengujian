@@ -621,5 +621,95 @@
         Dokumen ini sah dan diterbitkan resmi oleh Sistem Informasi Laboratorium Pengujian BBPOM di Mataram &bull; SPU #{{ $spuNum }}
     </div>
 
+    @if(!empty($photos) && count($photos) > 0)
+        <!-- ================================================================ -->
+        <!-- HALAMAN LAMPIRAN DOKUMENTASI FOTO PENGUJIAN (LAYOUT HARMONIS)    -->
+        <!-- ================================================================ -->
+        <div class="page-break"></div>
+
+        <table class="spu-header-table" style="margin-bottom: 8px;">
+            <tr>
+                <td class="spu-logo-td">
+                    @if(!empty($logoBase64))
+                        <img src="data:image/png;base64,{{ $logoBase64 }}" class="spu-logo-img" alt="Logo BPOM" />
+                    @endif
+                </td>
+                <td class="spu-title-td">
+                    <div class="spu-doc-title">LAMPIRAN DOKUMENTASI FOTO PENGUJIAN</div>
+                    <div class="spu-doc-no">Nomor Sampel: {{ $kodeSampel }} &bull; SPU #{{ $spuNum }}</div>
+                </td>
+                <td class="spu-qr-td">
+                    @if(!empty($qrBase64))
+                        <div class="spu-qr-box">
+                            <img src="data:image/svg+xml;base64,{{ $qrBase64 }}" alt="QR Code" />
+                            <div class="spu-qr-caption">VERIFIKASI RESMI</div>
+                        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
+
+        <div style="border-top: 2px solid #005baa; margin-bottom: 14px;"></div>
+
+        @php
+            $photoCount = count($photos);
+        @endphp
+
+        @if($photoCount === 1)
+            <!-- 1 FOTO: CENTERED HERO CARD (Rapi & Proporsional di Tengah Kertas) -->
+            <div style="text-align: center; margin: 10px auto; width: 75%;">
+                <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background-color: #f8fafc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="height: 125mm; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <img src="{{ $photos[0]['src'] }}" style="max-height: 122mm; max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Dokumentasi Foto" />
+                    </div>
+                    <div style="margin-top: 8px; font-size: 9pt; font-weight: bold; color: #0f172a;">
+                        {{ $photos[0]['caption'] ?: 'Dokumentasi Foto Sampel / Pengujian' }}
+                    </div>
+                </div>
+            </div>
+        @elseif($photoCount === 2)
+            <!-- 2 FOTO: DUA KOLOM BERDAMPINGAN DENGAN TINGGI SELARAS & EYE-COMFORTING -->
+            <table style="width: 100%; border-collapse: separate; border-spacing: 12px; margin-top: 5px;">
+                <tr>
+                    @foreach($photos as $p)
+                        <td style="width: 50%; vertical-align: top; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; background-color: #f8fafc; text-align: center;">
+                            <div style="height: 105mm; overflow: hidden; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;">
+                                <img src="{{ $p['src'] }}" style="max-height: 103mm; max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Foto" />
+                            </div>
+                            <div style="margin-top: 8px; font-size: 8.5pt; font-weight: bold; color: #0f172a;">
+                                {{ $p['caption'] ?: 'Foto Dokumentasi' }}
+                            </div>
+                        </td>
+                    @endforeach
+                </tr>
+            </table>
+        @else
+            <!-- 3 ATAU 4 FOTO: GRID 2x2 SEIMBANG, MENGISI KERTAS SECARA HARMONIS -->
+            <table style="width: 100%; border-collapse: separate; border-spacing: 10px; margin-top: 2px;">
+                @foreach(array_chunk($photos, 2) as $rowPhotos)
+                    <tr>
+                        @foreach($rowPhotos as $p)
+                            <td style="width: 50%; vertical-align: top; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px; background-color: #f8fafc; text-align: center;">
+                                <div style="height: 58mm; overflow: hidden; background: #ffffff; border-radius: 4px; border: 1px solid #e2e8f0; text-align: center;">
+                                    <img src="{{ $p['src'] }}" style="max-height: 56mm; max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Foto" />
+                                </div>
+                                <div style="margin-top: 5px; font-size: 8pt; font-weight: bold; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ $p['caption'] ?: 'Foto Dokumentasi' }}
+                                </div>
+                            </td>
+                        @endforeach
+                        @if(count($rowPhotos) === 1)
+                            <td style="width: 50%; border: none;"></td>
+                        @endif
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+
+        <div class="footer-note" style="margin-top: 12px;">
+            Lampiran dokumentasi foto resmi Laboratorium Pengujian Balai Besar POM di Mataram &bull; Sampel {{ $kodeSampel }}
+        </div>
+    @endif
+
 </body>
 </html>

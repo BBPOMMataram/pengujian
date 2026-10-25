@@ -523,6 +523,16 @@
                                                title="Export dokumen PDF baris data ini">
                                                 <span>Export PDF</span>
                                             </a>
+
+                                            <button type="button"
+                                                    class="js-btn-photo-modal inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs transition-colors"
+                                                    title="Export PDF disertai lampiran foto sampel"
+                                                    data-id="{{ $item->id }}"
+                                                    data-title="{{ $item->display_title }}"
+                                                    data-code="{{ $item->code }}"
+                                                    data-action-url="{{ route('pengujian.pdf.post', $item->id) }}">
+                                                <span>+ Foto</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -638,6 +648,80 @@
                     Tutup
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL EXPORT PDF DENGAN LAMPIRAN FOTO DOKUMENTASI -->
+    <div id="photo-export-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <!-- Header -->
+            <div class="px-6 py-4.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-b border-emerald-100 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Export Laporan + Lampiran Foto</h3>
+                        <p id="photo-modal-subtitle" class="text-xs text-slate-500 font-mono">Sampel #</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closePhotoModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">
+                    &times;
+                </button>
+            </div>
+
+            <form id="photo-export-form" method="POST" enctype="multipart/form-data" target="_blank" class="p-6 space-y-4">
+                @csrf
+
+                <!-- File Upload / Drag Zone -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        Pilih File Foto Lampiran (1 s.d. 4 Foto)
+                    </label>
+                    <div id="photo-dropzone" onclick="document.getElementById('photo-file-input').click()" class="border-2 border-dashed border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/40 rounded-xl p-5 text-center cursor-pointer transition">
+                        <input type="file" id="photo-file-input" name="photos[]" multiple accept="image/*" class="hidden" onchange="handlePhotoSelect(this)">
+                        <div class="flex items-center justify-center gap-2 mb-2">
+                            <span class="text-emerald-600">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </span>
+                        </div>
+                        <p class="text-xs font-bold text-slate-800">Klik atau seret file foto ke sini</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Format: JPG, PNG, WEBP. Ukuran gambar otomatis diselaraskan proporsional agar kertas terisi rapi & eye comforting.</p>
+                    </div>
+                </div>
+
+                <!-- Live Preview List -->
+                <div id="photo-preview-container" class="space-y-2 hidden">
+                    <label class="block text-xs font-bold text-slate-700">Preview & Keterangan Foto:</label>
+                    <div id="photo-preview-grid" class="grid grid-cols-2 gap-2.5 max-h-52 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Orientation Option -->
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <label class="font-bold text-slate-700">Orientasi Kertas:</label>
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="orientation" value="landscape" checked class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="font-semibold text-slate-700">Landscape (Standar SPU)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="orientation" value="portrait" class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="font-semibold text-slate-700">Portrait</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit Footer -->
+                <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closePhotoModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Download PDF Berlampiran Foto</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -974,6 +1058,80 @@
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     closeQrModal();
+                }
+            });
+        }
+
+        // ─── 4. PHOTO EXPORT MODAL LOGIC ───
+        const photoModal = document.getElementById('photo-export-modal');
+        const photoForm = document.getElementById('photo-export-form');
+        const photoSubtitle = document.getElementById('photo-modal-subtitle');
+        const photoGrid = document.getElementById('photo-preview-grid');
+        const photoContainer = document.getElementById('photo-preview-container');
+
+        function openPhotoModal(actionUrl, code, title) {
+            if (!photoModal) return;
+            photoForm.action = actionUrl;
+            photoSubtitle.innerText = `${code} • ${title}`;
+            photoGrid.innerHTML = '';
+            photoContainer.classList.add('hidden');
+            document.getElementById('photo-file-input').value = '';
+            photoModal.classList.remove('hidden');
+        }
+
+        function closePhotoModal() {
+            if (!photoModal) return;
+            photoModal.classList.add('hidden');
+        }
+
+        function handlePhotoSelect(input) {
+            if (!input.files || input.files.length === 0) {
+                photoContainer.classList.add('hidden');
+                photoGrid.innerHTML = '';
+                return;
+            }
+
+            photoGrid.innerHTML = '';
+            photoContainer.classList.remove('hidden');
+
+            const defaultCaptions = [
+                'Dokumentasi Tampak Depan Sampel',
+                'Dokumentasi Label & No. Batch',
+                'Dokumentasi Bentuk Sediaan',
+                'Dokumentasi Hasil Pengujian / Reaksi'
+            ];
+
+            Array.from(input.files).slice(0, 4).forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const card = document.createElement('div');
+                    card.className = 'border border-slate-200 rounded-xl p-2 bg-slate-50 flex flex-col gap-1.5';
+                    card.innerHTML = `
+                        <div class="h-24 bg-white rounded-lg border border-slate-200 overflow-hidden flex items-center justify-center">
+                            <img src="${e.target.result}" class="max-h-full max-w-full object-contain" alt="Preview Foto">
+                        </div>
+                        <input type="text" name="captions[]" value="${defaultCaptions[idx] || ('Dokumentasi Foto ' + (idx + 1))}" 
+                               placeholder="Keterangan Foto ${idx + 1}" 
+                               class="w-full text-[11px] px-2 py-1 bg-white border border-slate-200 rounded-md focus:outline-none focus:border-emerald-600">
+                    `;
+                    photoGrid.appendChild(card);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.js-btn-photo-modal');
+            if (!btn) return;
+            e.preventDefault();
+            const ds = btn.dataset;
+            openPhotoModal(ds.actionUrl, ds.code, ds.title);
+        });
+
+        if (photoModal) {
+            photoModal.addEventListener('click', (e) => {
+                if (e.target === photoModal) {
+                    closePhotoModal();
                 }
             });
         }

@@ -24,6 +24,7 @@ Route::get('/qr/{qrToken}', [PengujianController::class, 'qrImage'])->name('peng
 
 // PDF Generation Routes (Per-Row & Batch & Merged File Groups)
 Route::get('/item/{id}/pdf', [PengujianController::class, 'pdf'])->name('pengujian.pdf');
+Route::post('/item/{id}/pdf', [PengujianController::class, 'pdf'])->name('pengujian.pdf.post');
 Route::get('/item/{id}/pdf-fpdf', [PengujianController::class, 'pdfFpdf'])->name('pengujian.pdf.fpdf');
 Route::get('/batch/{batchId}/pdf-all', [PengujianController::class, 'pdfBatch'])->name('pengujian.batch.pdf');
 Route::get('/file-group/{fileGroupId}/pdf-merged', [PengujianController::class, 'pdfMergedFileGroup'])->name('pengujian.filegroup.pdf');

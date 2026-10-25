@@ -500,11 +500,32 @@ class PengujianController extends Controller
 
         $orientation = request()->query('orientation') ?: ($isSpu ? 'landscape' : 'portrait');
 
+        // Proses lampiran foto dokumentasi jika ada
+        $photos = [];
+        if (request()->hasFile('photos')) {
+            $uploadedPhotos = request()->file('photos');
+            if (!is_array($uploadedPhotos)) {
+                $uploadedPhotos = [$uploadedPhotos];
+            }
+            $captions = request()->input('captions', []);
+            foreach ($uploadedPhotos as $idx => $photo) {
+                if ($photo && $photo->isValid()) {
+                    $mime = $photo->getMimeType();
+                    $base64 = base64_encode(file_get_contents($photo->getRealPath()));
+                    $photos[] = [
+                        'src' => "data:{$mime};base64,{$base64}",
+                        'caption' => !empty($captions[$idx]) ? $captions[$idx] : ('Dokumentasi Foto ' . ($idx + 1)),
+                    ];
+                }
+            }
+        }
+
         $pdf = Pdf::loadView('pdf.laporan-pengujian', [
             'item' => $item,
             'qrBase64' => $qrBase64,
             'isSpu' => $isSpu,
             'orientation' => $orientation,
+            'photos' => $photos,
             'printedAt' => now()->format('d/m/Y H:i'),
         ]);
 
