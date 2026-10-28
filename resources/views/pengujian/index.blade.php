@@ -1206,11 +1206,11 @@
             </div>
         </div>
     </div>
-    <script>
+    ${'<'}script>
         window.onload = function() {
             setTimeout(function() { window.print(); }, 300);
         };
-    </script>
+    ${'<'}/script>
 </body>
 </html>`);
             printWindow.document.close();
@@ -1238,6 +1238,11 @@
 
             modal.classList.remove('hidden');
         }
+
+        // Attach global functions to window so inline onclick handlers never fail
+        window.filterBatchesByCategory = filterBatchesByCategory;
+        window.printBarcodeLabel = printBarcodeLabel;
+        window.openQrModal = openQrModal;
 
         // Unduh QR Code dalam format PNG siap print (resolusi tinggi 800x800 dengan background putih)
         function downloadQrPng() {
@@ -1324,6 +1329,11 @@
                 }
             });
         }
+
+        window.downloadQrPng = downloadQrPng;
+        window.closeQrModal = closeQrModal;
+        window.copyQrContent = copyQrContent;
+        window.copyTargetUrl = copyTargetUrl;
 
         // Event delegation for opening QR Modal
         document.addEventListener('click', function(e) {
