@@ -182,15 +182,25 @@
         <!-- SECTION 1: HALO DROPZONE (Excel / CSV / PDF) -->
         <section class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
             <div class="border-b border-slate-100 pb-3.5 mb-4">
-                <h2 class="text-base font-bold text-slate-900">
-                    Unggah Dokumen Pengujian (Excel / CSV / PDF)
-                </h2>
-                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-                    Mendukung file Excel (.xlsx, .xls), CSV, atau PDF Surat Permintaan Uji (SPU). Sistem otomatis memproses data dan menghasilkan QR Code untuk verifikasi.
-                </p>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">
+                            Unggah Dokumen Pengujian (Excel / CSV / PDF)
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                            Mendukung unggah satu atau <strong>beberapa file sekaligus</strong> (.xlsx, .xls, .csv, atau PDF SPU). Sistem otomatis memproses data dan menghasilkan QR Code untuk verifikasi.
+                        </p>
+                    </div>
+                    <div id="dropzone-badge-container" class="hidden">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-[#005baa] border border-blue-200">
+                            <span class="w-2 h-2 rounded-full bg-[#005baa] animate-pulse"></span>
+                            <span id="dropzone-badge-text">0 file dipilih</span>
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <form action="{{ route('pengujian.upload') }}" method="POST" enctype="multipart/form-data">
+            <form id="upload-form" action="{{ route('pengujian.upload') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
                 <!-- HALO ANIMATED DROPZONE CONTAINER -->
@@ -202,8 +212,8 @@
                     <div class="halo-blob-2"></div>
 
                     <!-- Inner Frosted Glass Card -->
-                    <div id="halo-dropzone" class="halo-inner p-6 sm:p-8 text-center">
-                        <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls,.csv,.pdf" class="hidden" required>
+                    <div id="halo-dropzone" class="halo-inner p-5 sm:p-7 text-center transition-all cursor-pointer">
+                        <input type="file" name="files[]" id="file_input" accept=".xlsx,.xls,.csv,.pdf" multiple class="hidden">
 
                         <!-- IDLE STATE: ICONS & PROMPT -->
                         <div id="dropzone-idle" class="space-y-3">
@@ -235,29 +245,34 @@
 
                             <div>
                                 <p class="text-sm font-bold text-slate-800">
-                                    Pilih atau seret file ke area ini
+                                    Pilih atau seret satu atau beberapa file ke area ini
                                 </p>
                                 <p class="text-xs text-slate-400 mt-1">
-                                    Format didukung: <strong>.xlsx, .xls, .csv, atau .pdf</strong> (Maksimal 25 MB)
+                                    Bisa memilih lebih dari 1 file sekaligus &bull; Format didukung: <strong>.xlsx, .xls, .csv, .pdf</strong> (Maks 25 MB/file)
                                 </p>
                             </div>
                         </div>
 
-                        <!-- SELECTED STATE: FILE DETAILS & REMOVE BUTTON -->
-                        <div id="dropzone-selected" class="hidden py-1">
-                            <div class="inline-flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                <div id="selected-icon" class="w-10 h-10 rounded-lg bg-blue-50 text-[#005baa] flex items-center justify-center shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
+                        <!-- SELECTED STATE: FILE LIST & MANAGEMENT -->
+                        <div id="dropzone-selected" class="hidden space-y-3" onclick="event.stopPropagation()">
+                            <div class="flex items-center justify-between px-1">
+                                <div class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                    <span>Daftar file yang akan diunggah:</span>
+                                    <span id="selected-count-text" class="text-[#005baa] font-bold">(0 file)</span>
                                 </div>
-                                <div class="text-left pr-2">
-                                    <p id="selected-name" class="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-xs sm:max-w-md">-</p>
-                                    <p id="selected-size" class="text-[11px] text-slate-400 mt-0.5">-</p>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="btn-add-more" class="text-xs font-medium text-[#005baa] hover:underline cursor-pointer">
+                                        + Tambah File
+                                    </button>
+                                    <span class="text-slate-300">|</span>
+                                    <button type="button" id="btn-clear-all" class="text-xs font-medium text-rose-600 hover:underline cursor-pointer">
+                                        Hapus Semua
+                                    </button>
                                 </div>
-                                <button type="button" id="btn-remove-file" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition" title="Batalkan pilihan file">
-                                    &times;
-                                </button>
+                            </div>
+
+                            <div id="selected-files-list" class="max-h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                <!-- Dynamically generated file items -->
                             </div>
                         </div>
                     </div>
@@ -265,11 +280,11 @@
 
                 <!-- Submit Action -->
                 <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div class="text-xs text-slate-500">
+                    <div id="upload-hint" class="text-xs text-slate-500">
                         File yang diunggah akan langsung dipetakan ke tabel di bawah ini.
                     </div>
-                    <button type="submit" id="btn-submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-semibold text-xs sm:text-sm shadow-sm transition">
-                        <span>Proses &amp; Generate QR Code</span>
+                    <button type="submit" id="btn-submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-semibold text-xs sm:text-sm shadow-sm transition cursor-pointer">
+                        <span id="btn-submit-text">Proses &amp; Generate QR Code</span>
                     </button>
                 </div>
             </form>
@@ -754,18 +769,157 @@
 
     <!-- CLIENT-SIDE LOGIC: HALO DROPZONE & DYNAMIC DATATABLE -->
     <script>
-        // ─── 1. HALO DROPZONE HANDLERS ───
+        // ─── 1. HALO DROPZONE HANDLERS (MULTI-FILE ACCUMULATION & DEDUPLICATION) ───
         const dropzone = document.getElementById('halo-dropzone');
-        const fileInput = document.getElementById('excel_file');
+        const fileInput = document.getElementById('file_input');
+        const uploadForm = document.getElementById('upload-form');
         const idleState = document.getElementById('dropzone-idle');
         const selectedState = document.getElementById('dropzone-selected');
-        const selectedName = document.getElementById('selected-name');
-        const selectedSize = document.getElementById('selected-size');
-        const btnRemove = document.getElementById('btn-remove-file');
+        const badgeContainer = document.getElementById('dropzone-badge-container');
+        const badgeText = document.getElementById('dropzone-badge-text');
+        const selectedCountText = document.getElementById('selected-count-text');
+        const filesListContainer = document.getElementById('selected-files-list');
+        const btnAddMore = document.getElementById('btn-add-more');
+        const btnClearAll = document.getElementById('btn-clear-all');
+        const uploadHint = document.getElementById('upload-hint');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnSubmitText = document.getElementById('btn-submit-text');
+
+        let selectedFiles = [];
+
+        function formatBytes(bytes) {
+            if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function getFileIconHtml(filename) {
+            const ext = (filename.split('.').pop() || '').toLowerCase();
+            if (ext === 'pdf') {
+                return `
+                    <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                            <polyline stroke-linecap="round" stroke-linejoin="round" points="14 2 14 8 20 8"></polyline>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15h6M9 11h6"></path>
+                        </svg>
+                    </div>`;
+            }
+            if (ext === 'csv') {
+                return `
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-[#005baa] border border-blue-200 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>`;
+            }
+            return `
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                        <polyline stroke-linecap="round" stroke-linejoin="round" points="14 2 14 8 20 8"></polyline>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 13l3 3m0-3l-3 3m5-3h4m-4 3h4"></path>
+                    </svg>
+                </div>`;
+        }
+
+        function syncInputFiles() {
+            try {
+                const dt = new DataTransfer();
+                selectedFiles.forEach(f => dt.items.add(f));
+                fileInput.files = dt.files;
+            } catch (err) {
+                console.warn('DataTransfer sync error:', err);
+            }
+        }
+
+        function renderSelectedFiles() {
+            if (selectedFiles.length === 0) {
+                idleState.classList.remove('hidden');
+                selectedState.classList.add('hidden');
+                badgeContainer.classList.add('hidden');
+                uploadHint.innerText = 'File yang diunggah akan langsung dipetakan ke tabel di bawah ini.';
+                btnSubmitText.innerText = 'Proses & Generate QR Code';
+                filesListContainer.innerHTML = '';
+                return;
+            }
+
+            idleState.classList.add('hidden');
+            selectedState.classList.remove('hidden');
+            badgeContainer.classList.remove('hidden');
+
+            const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+            const totalFormatted = formatBytes(totalBytes);
+
+            badgeText.innerText = `${selectedFiles.length} file dipilih (${totalFormatted})`;
+            selectedCountText.innerText = `(${selectedFiles.length} file)`;
+
+            if (selectedFiles.length > 1) {
+                uploadHint.innerText = `Semua ${selectedFiles.length} file akan diproses menjadi batch terpisah yang dapat dipilih pada filter batch.`;
+                btnSubmitText.innerText = `Unggah ${selectedFiles.length} File & Proses Data`;
+            } else {
+                uploadHint.innerText = 'File yang diunggah akan langsung dipetakan ke tabel di bawah ini.';
+                btnSubmitText.innerText = 'Proses & Generate QR Code';
+            }
+
+            filesListContainer.innerHTML = '';
+            selectedFiles.forEach((file, idx) => {
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-200 transition';
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        ${getFileIconHtml(file.name)}
+                        <div class="text-left truncate">
+                            <p class="text-xs font-semibold text-slate-800 truncate" title="${file.name}">
+                                ${file.name}
+                            </p>
+                            <p class="text-[10px] text-slate-400">
+                                ${formatBytes(file.size)}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" class="js-remove-single-file w-6 h-6 rounded-md bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-400 flex items-center justify-center text-sm font-bold transition cursor-pointer shrink-0" data-index="${idx}" title="Hapus file ini">
+                        &times;
+                    </button>
+                `;
+                filesListContainer.appendChild(card);
+            });
+        }
+
+        function addFiles(newFiles) {
+            const allowed = ['xlsx', 'xls', 'csv', 'pdf'];
+            const valid = [];
+            let invalidCount = 0;
+
+            Array.from(newFiles).forEach(f => {
+                const ext = (f.name.split('.').pop() || '').toLowerCase();
+                if (allowed.includes(ext)) {
+                    valid.push(f);
+                } else {
+                    invalidCount++;
+                }
+            });
+
+            if (invalidCount > 0) {
+                alert('Beberapa file diabaikan karena bukan berformat .xlsx, .xls, .csv, atau .pdf.');
+            }
+
+            valid.forEach(f => {
+                const exists = selectedFiles.some(existing => existing.name === f.name && existing.size === f.size);
+                if (!exists) {
+                    selectedFiles.push(f);
+                }
+            });
+
+            syncInputFiles();
+            renderSelectedFiles();
+        }
 
         if (dropzone && fileInput) {
             dropzone.addEventListener('click', (e) => {
-                if (e.target.closest('#btn-remove-file')) return;
+                if (e.target.closest('#dropzone-selected')) return;
+                fileInput.value = '';
                 fileInput.click();
             });
 
@@ -788,32 +942,60 @@
             dropzone.addEventListener('drop', (e) => {
                 const dt = e.dataTransfer;
                 if (dt && dt.files && dt.files.length > 0) {
-                    fileInput.files = dt.files;
-                    updateFileDisplay();
+                    addFiles(dt.files);
                 }
             });
 
-            fileInput.addEventListener('change', updateFileDisplay);
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    addFiles(e.target.files);
+                }
+            });
         }
 
-        function updateFileDisplay() {
-            if (fileInput.files && fileInput.files[0]) {
-                const file = fileInput.files[0];
-                selectedName.innerText = file.name;
-                selectedSize.innerText = (file.size / 1024).toFixed(1) + ' KB';
-                idleState.classList.add('hidden');
-                selectedState.classList.remove('hidden');
-            } else {
-                idleState.classList.remove('hidden');
-                selectedState.classList.add('hidden');
-            }
-        }
-
-        if (btnRemove) {
-            btnRemove.addEventListener('click', (e) => {
+        if (btnAddMore) {
+            btnAddMore.addEventListener('click', (e) => {
                 e.stopPropagation();
                 fileInput.value = '';
-                updateFileDisplay();
+                fileInput.click();
+            });
+        }
+
+        if (btnClearAll) {
+            btnClearAll.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedFiles = [];
+                fileInput.value = '';
+                syncInputFiles();
+                renderSelectedFiles();
+            });
+        }
+
+        if (filesListContainer) {
+            filesListContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.js-remove-single-file');
+                if (!btn) return;
+                e.stopPropagation();
+                const idx = parseInt(btn.getAttribute('data-index'), 10);
+                if (!isNaN(idx) && idx >= 0 && idx < selectedFiles.length) {
+                    selectedFiles.splice(idx, 1);
+                    fileInput.value = '';
+                    syncInputFiles();
+                    renderSelectedFiles();
+                }
+            });
+        }
+
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', (e) => {
+                if (selectedFiles.length === 0) {
+                    e.preventDefault();
+                    alert('Silakan pilih setidaknya satu file Excel, CSV, atau PDF terlebih dahulu.');
+                    return;
+                }
+                syncInputFiles();
+                btnSubmit.disabled = true;
+                btnSubmitText.innerText = 'Memproses...';
             });
         }
 
