@@ -317,75 +317,82 @@
                     @endif
 
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilihan Batch:</span>
-                            <div class="flex items-center gap-1.5 flex-wrap" id="batch-buttons-container">
-                                @foreach($batches as $b)
-                                    <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
-                                       data-komoditi="{{ $b->komoditi ?: 'Lainnya' }}"
-                                       class="js-batch-link inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs font-semibold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
-                                        <span>{{ $b->filename ?: $b->batch_id }}</span>
-                                        @if(!empty($b->komoditi))
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold {{ $selectedBatchId === $b->batch_id ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200/60' }}">
-                                                {{ $b->komoditi }}
-                                            </span>
-                                        @endif
-                                        @if(!empty($b->sheet_name) && $b->sheet_name !== 'Sheet1')
-                                            <span class="opacity-80">[{{ $b->sheet_name }}]</span>
-                                        @endif
-                                        <span class="font-semibold">({{ $b->total_items }})</span>
-                                    </a>
-                                @endforeach
+                        <div class="flex items-center gap-2.5 flex-wrap flex-1 min-w-0">
+                            <label for="batch-select" class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                                Pilihan Batch:
+                            </label>
+                            <div class="relative flex-1 max-w-md sm:max-w-lg">
+                                <select id="batch-select" 
+                                        onchange="onBatchSelectChange(this.value)"
+                                        class="w-full pl-3 pr-8 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 shadow-2xs focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] transition cursor-pointer truncate">
+                                    @foreach($batches as $b)
+                                        <option value="{{ $b->batch_id }}"
+                                                data-komoditi="{{ $b->komoditi ?: 'Lainnya' }}"
+                                                data-filename="{{ $b->filename ?: $b->batch_id }}"
+                                                data-sheet="{{ $b->sheet_name ?: '' }}"
+                                                data-total="{{ $b->total_items }}"
+                                                {{ $selectedBatchId === $b->batch_id ? 'selected' : '' }}>
+                                            {{ $b->filename ?: $b->batch_id }}{{ (!empty($b->sheet_name) && $b->sheet_name !== 'Sheet1') ? ' [' . $b->sheet_name . ']' : '' }}{{ !empty($b->komoditi) ? ' • ' . $b->komoditi : '' }} ({{ $b->total_items }} data)
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
-                        </div>      </div>
+                        </div>
 
-                    <!-- Batch Export and Delete Actions -->
-                    <div class="flex items-center gap-2 flex-wrap">
-                        @if($selectedBatchId && $items->isNotEmpty())
-                            <a href="{{ route('pengujian.batch.pdf', $selectedBatchId) }}" 
+                        <!-- Batch Export and Delete Actions -->
+                        <div class="flex items-center gap-2 flex-wrap shrink-0" id="batch-actions-container">
+                            <a id="btn-export-tabular"
+                               href="{{ $selectedBatchId ? route('pengujian.batch.pdf', $selectedBatchId) : '#' }}" 
                                target="_blank"
-                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs {{ ($selectedBatchId && $items->isNotEmpty()) ? '' : 'hidden' }}"
                                title="Unduh seluruh data dalam format Surat Permintaan Uji PDF">
                                 <span>Export PDF Tabular</span>
                             </a>
 
-                            <form action="{{ route('pengujian.batch.destroy', $selectedBatchId) }}" method="POST" onsubmit="return confirm('Hapus batch ini?')" class="inline">
+                            <form id="form-delete-batch" 
+                                  action="{{ $selectedBatchId ? route('pengujian.batch.destroy', $selectedBatchId) : '#' }}" 
+                                  method="POST" 
+                                  onsubmit="return confirm('Hapus batch ini?')" 
+                                  class="inline {{ $selectedBatchId ? '' : 'hidden' }}">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition">
+                                <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition cursor-pointer">
                                     <span>Hapus</span>
                                 </button>
                             </form>
-                        @endif
+                        </div>
                     </div>
                 </div>
 
                 <!-- SUB-BAR JIKA FILE MEMILIKI BEBERAPA TAB / SHEETS -->
-                @if($siblingSheets->count() > 1)
+                <div id="sibling-sheets-container" class="{{ ($siblingSheets && $siblingSheets->count() > 1) ? '' : 'hidden' }}">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/80 border border-blue-200 p-3 rounded-xl shadow-2xs">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-xs font-bold text-blue-900">
                                 Tab File Ini:
                             </span>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                @foreach($siblingSheets as $sheet)
-                                    <a href="{{ route('pengujian.index', ['batch' => $sheet->batch_id]) }}" 
-                                       class="px-3 py-1 rounded-lg text-xs font-semibold border transition-all {{ $selectedBatchId === $sheet->batch_id ? 'bg-[#005baa] text-white border-[#005baa]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' }}">
-                                        {{ $sheet->sheet_name ?: 'Tab' }} ({{ $sheet->total_items }})
-                                    </a>
-                                @endforeach
+                            <div class="flex items-center gap-1.5 flex-wrap" id="sibling-sheets-buttons">
+                                @if($siblingSheets)
+                                    @foreach($siblingSheets as $sheet)
+                                        <button type="button"
+                                                onclick="onBatchSelectChange('{{ $sheet->batch_id }}')" 
+                                                class="js-sibling-tab-btn px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $selectedBatchId === $sheet->batch_id ? 'bg-[#005baa] text-white border-[#005baa]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' }}"
+                                                data-batch-id="{{ $sheet->batch_id }}">
+                                            {{ $sheet->sheet_name ?: 'Tab' }} ({{ $sheet->total_items }})
+                                        </button>
+                                    @endforeach
+                                @endif
                             </div>
                         </div>
 
-                        @if($currentBatch && $currentBatch->file_group_id)
-                            <a href="{{ route('pengujian.filegroup.pdf', $currentBatch->file_group_id) }}" 
-                               target="_blank"
-                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-xs transition shrink-0">
-                                <span>Export Gabungan (Semua Tab ke 1 PDF)</span>
-                            </a>
-                        @endif
+                        <a id="btn-merged-pdf" 
+                           href="{{ ($currentBatch && $currentBatch->file_group_id) ? route('pengujian.filegroup.pdf', $currentBatch->file_group_id) : '#' }}" 
+                           target="_blank"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-xs transition shrink-0 {{ ($currentBatch && $currentBatch->file_group_id) ? '' : 'hidden' }}">
+                            <span>Export Gabungan (Semua Tab ke 1 PDF)</span>
+                        </a>
                     </div>
-                @endif
+                </div>
             </div>
         @endif
 
@@ -400,50 +407,48 @@
                             {{ $items->count() }} Data
                         </span>
                     </h3>
-                    @if($currentBatch)
-                        <p class="text-xs text-slate-500 mt-0.5">
-                            Sumber: <strong class="text-slate-700">{{ $currentBatch->filename }}</strong>
+                    <p id="dt-batch-subtitle" class="text-xs text-slate-500 mt-0.5">
+                        @if($currentBatch)
+                            Sumber: <strong class="text-slate-700">{{ $currentBatch->filename ?: $currentBatch->batch_id }}</strong>
                             @if(!empty($currentBatch->sheet_name) && $currentBatch->sheet_name !== 'Sheet1')
                                 &bull; Tab: <span class="text-[#005baa] font-semibold">{{ $currentBatch->sheet_name }}</span>
                             @endif
-                        </p>
-                    @endif
+                        @endif
+                    </p>
                 </div>
 
-                @if($items->isNotEmpty())
-                    <!-- Live Search & Page Size Selector -->
-                    <div class="flex items-center gap-2.5 flex-wrap">
-                        <!-- Search Input -->
-                        <div class="relative">
-                            <input type="text" id="dt-search-input" placeholder="Cari data di tabel..." 
-                                   class="w-48 sm:w-64 pl-3 pr-8 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] transition">
-                            <button type="button" id="dt-search-clear" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm font-bold">
-                                &times;
-                            </button>
-                        </div>
-
-                        <!-- Page Size Selector -->
-                        <div class="flex items-center gap-1.5 text-xs text-slate-500">
-                            <span>Tampilkan:</span>
-                            <select id="dt-page-size" class="py-1.5 px-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] bg-white">
-                                <option value="10" selected>10</option>
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="all">Semua</option>
-                            </select>
-                        </div>
+                <!-- Live Search & Page Size Selector -->
+                <div id="dt-controls-container" class="flex items-center gap-2.5 flex-wrap {{ $items->isEmpty() ? 'hidden' : '' }}">
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <input type="text" id="dt-search-input" placeholder="Cari data di tabel..." 
+                               class="w-48 sm:w-64 pl-3 pr-8 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] focus:ring-1 focus:ring-[#005baa] transition">
+                        <button type="button" id="dt-search-clear" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm font-bold">
+                            &times;
+                        </button>
                     </div>
-                @endif
+
+                    <!-- Page Size Selector -->
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500">
+                        <span>Tampilkan:</span>
+                        <select id="dt-page-size" class="py-1.5 px-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#005baa] bg-white">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
-            @if($items->isEmpty())
-                <div class="p-12 text-center">
-                    <p class="text-sm font-semibold text-slate-700">Belum ada data pengujian yang dimuat</p>
-                    <p class="text-xs text-slate-400 mt-1">Silakan unggah file Excel, CSV, atau Dokumen PDF pada formulir di atas.</p>
-                </div>
-            @else
+            <div id="table-empty-container" class="p-12 text-center {{ $items->isEmpty() ? '' : 'hidden' }}">
+                <p class="text-sm font-semibold text-slate-700">Belum ada data pengujian yang dimuat</p>
+                <p class="text-xs text-slate-400 mt-1">Silakan unggah file Excel, CSV, atau Dokumen PDF pada formulir di atas.</p>
+            </div>
+
+            <div id="table-content-container" class="{{ $items->isEmpty() ? 'hidden' : '' }}">
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table id="main-datatable" class="w-full text-left border-collapse text-xs">
+                    <table id="main-datatable" class="w-full text-left border-collapse text-xs transition-opacity duration-200">
                         <thead>
                             <tr class="bg-slate-50 text-slate-700 border-b border-slate-200">
                                 <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-center w-12">No</th>
@@ -588,7 +593,7 @@
                         <!-- Dynamic pagination buttons generated by JS -->
                     </div>
                 </div>
-            @endif
+            </div>
         </section>
 
     </main>
@@ -999,12 +1004,10 @@
             });
         }
 
-        // ─── 2. DYNAMIC DATATABLE (SEARCH & PAGINATION) ───
+        // ─── 2. DYNAMIC DATATABLE CONTROLLER (SEARCH & PAGINATION) ───
+        let dtController = null;
         (function() {
             const tableBody = document.getElementById('dt-table-body');
-            if (!tableBody) return;
-
-            const allRows = Array.from(tableBody.querySelectorAll('.dt-row'));
             const searchInput = document.getElementById('dt-search-input');
             const searchClear = document.getElementById('dt-search-clear');
             const pageSizeSelect = document.getElementById('dt-page-size');
@@ -1013,20 +1016,21 @@
             const dtEnd = document.getElementById('dt-end');
             const dtTotal = document.getElementById('dt-total');
 
+            let allRows = tableBody ? Array.from(tableBody.querySelectorAll('.dt-row')) : [];
             let currentPage = 1;
-            let pageSize = parseInt(pageSizeSelect.value, 10) || 10;
+            let pageSize = pageSizeSelect ? (pageSizeSelect.value === 'all' ? 0 : (parseInt(pageSizeSelect.value, 10) || 10)) : 10;
             let filteredRows = [...allRows];
 
             function applyFilter() {
-                const query = (searchInput.value || '').trim().toLowerCase();
+                const query = (searchInput ? searchInput.value || '' : '').trim().toLowerCase();
                 if (query) {
-                    searchClear.classList.remove('hidden');
+                    if (searchClear) searchClear.classList.remove('hidden');
                     filteredRows = allRows.filter(row => {
                         const text = row.innerText.toLowerCase();
                         return text.includes(query);
                     });
                 } else {
-                    searchClear.classList.add('hidden');
+                    if (searchClear) searchClear.classList.add('hidden');
                     filteredRows = [...allRows];
                 }
                 currentPage = 1;
@@ -1036,7 +1040,7 @@
             function renderTable() {
                 const total = filteredRows.length;
                 const effectivePageSize = pageSize === 0 ? total : pageSize;
-                const totalPages = Math.ceil(total / effectivePageSize) || 1;
+                const totalPages = Math.ceil(total / (effectivePageSize || 1)) || 1;
 
                 if (currentPage > totalPages) currentPage = totalPages;
                 if (currentPage < 1) currentPage = 1;
@@ -1049,31 +1053,34 @@
 
                 // Show only paginated filtered rows
                 for (let i = startIndex; i < endIndex; i++) {
-                    filteredRows[i].style.display = '';
+                    if (filteredRows[i]) filteredRows[i].style.display = '';
                 }
 
                 // Update info text
-                if (total === 0) {
-                    dtStart.innerText = '0';
-                    dtEnd.innerText = '0';
-                    dtTotal.innerText = '0';
-                } else {
-                    dtStart.innerText = (startIndex + 1).toString();
-                    dtEnd.innerText = endIndex.toString();
-                    dtTotal.innerText = total.toString();
+                if (dtStart && dtEnd && dtTotal) {
+                    if (total === 0) {
+                        dtStart.innerText = '0';
+                        dtEnd.innerText = '0';
+                        dtTotal.innerText = '0';
+                    } else {
+                        dtStart.innerText = (startIndex + 1).toString();
+                        dtEnd.innerText = endIndex.toString();
+                        dtTotal.innerText = total.toString();
+                    }
                 }
 
                 renderPaginationButtons(totalPages);
             }
 
             function renderPaginationButtons(totalPages) {
+                if (!paginationContainer) return;
                 paginationContainer.innerHTML = '';
                 if (totalPages <= 1) return;
 
                 // Previous Button
                 const prevBtn = document.createElement('button');
                 prevBtn.type = 'button';
-                prevBtn.className = 'px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition';
+                prevBtn.className = 'px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer';
                 prevBtn.innerText = 'Sebelumnya';
                 prevBtn.disabled = currentPage === 1;
                 prevBtn.onclick = () => { if (currentPage > 1) { currentPage--; renderTable(); } };
@@ -1086,7 +1093,7 @@
                 for (let p = startPage; p <= endPage; p++) {
                     const pageBtn = document.createElement('button');
                     pageBtn.type = 'button';
-                    pageBtn.className = 'px-2.5 py-1 rounded-lg border text-xs font-semibold transition ' + 
+                    pageBtn.className = 'px-2.5 py-1 rounded-lg border text-xs font-semibold transition cursor-pointer ' + 
                         (p === currentPage 
                             ? 'bg-[#005baa] text-white border-[#005baa]' 
                             : 'border-slate-200 text-slate-700 hover:bg-slate-100');
@@ -1099,37 +1106,318 @@
                 // Next Button
                 const nextBtn = document.createElement('button');
                 nextBtn.type = 'button';
-                nextBtn.className = 'px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition';
+                nextBtn.className = 'px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer';
                 nextBtn.innerText = 'Selanjutnya';
                 nextBtn.disabled = currentPage === totalPages;
                 nextBtn.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTable(); } };
                 paginationContainer.appendChild(nextBtn);
             }
 
+            function reinit() {
+                const tbody = document.getElementById('dt-table-body');
+                allRows = tbody ? Array.from(tbody.querySelectorAll('.dt-row')) : [];
+                if (pageSizeSelect) {
+                    const val = pageSizeSelect.value;
+                    pageSize = val === 'all' ? 0 : (parseInt(val, 10) || 10);
+                }
+                if (searchInput) searchInput.value = '';
+                if (searchClear) searchClear.classList.add('hidden');
+                filteredRows = [...allRows];
+                currentPage = 1;
+                renderTable();
+            }
+
             // Events
-            searchInput.addEventListener('input', applyFilter);
-            searchClear.addEventListener('click', () => {
-                searchInput.value = '';
+            if (searchInput) searchInput.addEventListener('input', applyFilter);
+            if (searchClear) searchClear.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
                 applyFilter();
             });
 
-            pageSizeSelect.addEventListener('change', () => {
+            if (pageSizeSelect) pageSizeSelect.addEventListener('change', () => {
                 const val = pageSizeSelect.value;
                 pageSize = val === 'all' ? 0 : (parseInt(val, 10) || 10);
                 currentPage = 1;
                 renderTable();
             });
 
+            dtController = { reinit, applyFilter, renderTable };
+            window.dtController = dtController;
+
             // Initial render
-            renderTable();
+            reinit();
         })();
 
-        // ─── 3. POP-UP MODAL QR CODE BESAR ───
-        const modal = document.getElementById('qr-modal');
-        let currentRawQrContent = '';
-        let currentTargetUrl = '';
+        // ─── 3. DYNAMIC BATCH & CATEGORY CONTROLLERS (NO FULL PAGE RELOAD) ───
+        const IGNORED_COLS = [
+            'manager_administrasi', 'nip_manager_administrasi',
+            'kepala_balai', 'nip_kepala_balai',
+            'petugas_penerima', 'nip_petugas_penerima',
+            'tanggal_spu', 'no_spu', 'nomor spu', 'nomor_spu',
+            '_meta'
+        ];
 
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function buildTheadHtml(headers) {
+            let html = `<tr class="bg-slate-50 text-slate-700 border-b border-slate-200">
+                <th class="py-3 px-3.5 font-bold uppercase tracking-wider text-center w-12">No</th>`;
+
+            headers.forEach(h => {
+                const hLower = (h || '').trim().toLowerCase();
+                if (hLower.includes('qr') || h.startsWith('_') || IGNORED_COLS.includes(hLower)) return;
+
+                html += `<th class="py-3 px-3.5 font-bold uppercase tracking-wider text-slate-800 min-w-[180px]">`;
+                if (h.includes(' - ')) {
+                    const parts = h.split(' - ');
+                    const mainH = (parts[0] || '').replace(/_/g, ' ');
+                    const subH = (parts.slice(1).join(' - ') || '').replace(/_/g, ' ');
+                    html += `<div class="text-[10px] text-slate-400 font-semibold normal-case tracking-normal">${escapeHtml(mainH)}</div>
+                             <div class="text-xs font-bold text-slate-800">${escapeHtml(subH)}</div>`;
+                } else {
+                    html += escapeHtml(h.replace(/_/g, ' '));
+                }
+                html += `</th>`;
+            });
+
+            html += `
+                <th class="py-3 px-4 font-bold uppercase tracking-wider text-center bg-blue-50/70 text-[#005baa] border-l border-blue-100 min-w-[120px]">
+                    QR Code Ter-generate
+                </th>
+                <th class="py-3 px-4 font-bold uppercase tracking-wider text-center bg-slate-50 text-slate-700 border-l border-slate-200 min-w-[160px] sticky right-0 z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.03)]">
+                    Aksi
+                </th>
+            </tr>`;
+            return html;
+        }
+
+        function buildTbodyHtml(items, headers) {
+            let html = '';
+            items.forEach((item, index) => {
+                const scanUrl = item.target_url || (`/scan/${item.qr_token}`);
+                const pdfUrl = `/item/${item.id}/pdf`;
+                const qrImgUrl = item.qr_url || (`/qr/${item.qr_token}`);
+                const displayTitle = item.display_title || (item.data ? (item.data['Nama Produk'] || item.data['NAMA PRODUK / SAMPEL'] || item.code || '') : (item.code || ''));
+                const qrInfo = item.qr_content_display || item.qr_content || item.code || '-';
+
+                html += `<tr class="dt-row hover:bg-blue-50/20 transition-colors" data-row-index="${index}">
+                    <td class="dt-cell-no py-3 px-3.5 text-center text-slate-400 font-mono font-medium">
+                        ${index + 1}
+                    </td>`;
+
+                headers.forEach(h => {
+                    const hLower = (h || '').trim().toLowerCase();
+                    if (hLower.includes('qr') || h.startsWith('_') || IGNORED_COLS.includes(hLower)) return;
+
+                    let val = (item.data && item.data[h] !== undefined) ? item.data[h] : '-';
+                    html += `<td class="dt-cell-data py-3 px-3.5 text-slate-900 font-medium max-w-sm">`;
+                    if (typeof val === 'object' && val !== null) {
+                        html += escapeHtml(JSON.stringify(val));
+                    } else {
+                        const valStr = String(val);
+                        const vLower = valStr.toLowerCase();
+                        if (vLower.includes('memenuhi syarat') || vLower === 'ms') {
+                            html += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">${escapeHtml(valStr)}</span>`;
+                        } else if (vLower.includes('tms') || vLower.includes('tidak memenuhi')) {
+                            html += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">${escapeHtml(valStr)}</span>`;
+                        } else {
+                            html += escapeHtml(valStr);
+                        }
+                    }
+                    html += `</td>`;
+                });
+
+                // QR Code column
+                html += `
+                    <td class="py-2.5 px-4 bg-blue-50/20 border-l border-blue-100 text-center">
+                        <div class="flex items-center justify-center">
+                            <button type="button" 
+                                    class="js-btn-qr-modal p-1 bg-white rounded-xl border border-slate-200 hover:border-[#005baa] hover:shadow-md transition-all shrink-0 cursor-pointer" 
+                                    title="Klik untuk melihat Pop-up QR Code"
+                                    data-qr-token="${escapeHtml(item.qr_token || '')}"
+                                    data-title="${escapeHtml(displayTitle)}"
+                                    data-code="${escapeHtml(item.code || '')}"
+                                    data-target-url="${escapeHtml(scanUrl)}"
+                                    data-pdf-url="${escapeHtml(pdfUrl)}"
+                                    data-info="${escapeHtml(qrInfo)}"
+                                    data-qr-base64="${escapeHtml(item.qr_base64 || '')}">
+                                <div class="w-14 h-14 flex items-center justify-center p-0.5">
+                                    <img src="${escapeHtml(qrImgUrl)}" alt="QR Code" class="w-full h-full object-contain" loading="lazy" />
+                                </div>
+                            </button>
+                        </div>
+                    </td>`;
+
+                // Action column
+                html += `
+                    <td class="py-2.5 px-4 bg-white border-l border-slate-200 sticky right-0 z-10 hover:bg-blue-50/30 transition-colors">
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button type="button"
+                                    class="js-btn-qr-modal inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#005baa] hover:bg-[#004887] text-white shadow-2xs transition-colors cursor-pointer"
+                                    title="Buka pop-up QR Code besar"
+                                    data-qr-token="${escapeHtml(item.qr_token || '')}"
+                                    data-title="${escapeHtml(displayTitle)}"
+                                    data-code="${escapeHtml(item.code || '')}"
+                                    data-target-url="${escapeHtml(scanUrl)}"
+                                    data-pdf-url="${escapeHtml(pdfUrl)}"
+                                    data-info="${escapeHtml(qrInfo)}"
+                                    data-qr-base64="${escapeHtml(item.qr_base64 || '')}">
+                                <span>Pop-up QR</span>
+                            </button>
+
+                            <a href="${escapeHtml(pdfUrl)}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs transition-colors"
+                               title="Export dokumen PDF baris data ini">
+                                <span>Export PDF</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            return html;
+        }
+
+        function renderTableData(data) {
+            const items = data.items || [];
+            const headers = data.headers || [];
+            const currentBatch = data.currentBatch || null;
+            const siblingSheets = data.siblingSheets || [];
+            const selectedBatchId = data.selectedBatchId || '';
+
+            // 1. Update Title & Subtitle
+            const badgeTotal = document.getElementById('dt-badge-total');
+            if (badgeTotal) badgeTotal.innerText = `${items.length} Data`;
+
+            const subEl = document.getElementById('dt-batch-subtitle');
+            if (subEl) {
+                if (currentBatch) {
+                    let subHtml = `Sumber: <strong class="text-slate-700">${escapeHtml(currentBatch.filename || currentBatch.batch_id)}</strong>`;
+                    if (currentBatch.sheet_name && currentBatch.sheet_name !== 'Sheet1') {
+                        subHtml += ` &bull; Tab: <span class="text-[#005baa] font-semibold">${escapeHtml(currentBatch.sheet_name)}</span>`;
+                    }
+                    subEl.innerHTML = subHtml;
+                } else {
+                    subEl.innerHTML = '';
+                }
+            }
+
+            // 2. Update Export & Delete Actions
+            const btnExport = document.getElementById('btn-export-tabular');
+            if (btnExport) {
+                btnExport.href = `/batch/${encodeURIComponent(selectedBatchId)}/pdf-all`;
+                btnExport.classList.toggle('hidden', items.length === 0);
+            }
+            const formDelete = document.getElementById('form-delete-batch');
+            if (formDelete) {
+                formDelete.action = `/batch/${encodeURIComponent(selectedBatchId)}`;
+                formDelete.classList.toggle('hidden', !selectedBatchId);
+            }
+
+            // 3. Update Sibling Sheets
+            const sibContainer = document.getElementById('sibling-sheets-container');
+            const sibButtons = document.getElementById('sibling-sheets-buttons');
+            const btnMerged = document.getElementById('btn-merged-pdf');
+
+            if (siblingSheets && siblingSheets.length > 1) {
+                if (sibContainer) sibContainer.classList.remove('hidden');
+                if (sibButtons) {
+                    sibButtons.innerHTML = siblingSheets.map(s => {
+                        const isSel = s.batch_id === selectedBatchId;
+                        return `<button type="button" onclick="onBatchSelectChange('${escapeHtml(s.batch_id)}')" class="js-sibling-tab-btn px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${isSel ? 'bg-[#005baa] text-white border-[#005baa]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}" data-batch-id="${escapeHtml(s.batch_id)}">${escapeHtml(s.sheet_name || 'Tab')} (${s.total_items})</button>`;
+                    }).join('');
+                }
+                if (btnMerged) {
+                    if (currentBatch && currentBatch.file_group_id) {
+                        btnMerged.href = `/file-group/${encodeURIComponent(currentBatch.file_group_id)}/pdf-merged`;
+                        btnMerged.classList.remove('hidden');
+                    } else {
+                        btnMerged.classList.add('hidden');
+                    }
+                }
+            } else {
+                if (sibContainer) sibContainer.classList.add('hidden');
+            }
+
+            // 4. Update Controls, Empty Container, Table Content
+            const dtControls = document.getElementById('dt-controls-container');
+            if (dtControls) dtControls.classList.toggle('hidden', items.length === 0);
+
+            const emptyContainer = document.getElementById('table-empty-container');
+            const contentContainer = document.getElementById('table-content-container');
+
+            if (items.length === 0) {
+                if (emptyContainer) emptyContainer.classList.remove('hidden');
+                if (contentContainer) contentContainer.classList.add('hidden');
+            } else {
+                if (emptyContainer) emptyContainer.classList.add('hidden');
+                if (contentContainer) contentContainer.classList.remove('hidden');
+
+                const tableThead = document.querySelector('#main-datatable thead');
+                const tableBody = document.getElementById('dt-table-body');
+                if (tableThead) tableThead.innerHTML = buildTheadHtml(headers);
+                if (tableBody) tableBody.innerHTML = buildTbodyHtml(items, headers);
+
+                if (window.dtController) {
+                    window.dtController.reinit();
+                }
+            }
+        }
+
+        let isBatchLoading = false;
+        async function loadBatchData(batchId) {
+            if (!batchId || isBatchLoading) return;
+            isBatchLoading = true;
+
+            const tableEl = document.getElementById('main-datatable');
+            if (tableEl) tableEl.style.opacity = '0.35';
+
+            try {
+                const response = await fetch('/api/pengujian?batch=' + encodeURIComponent(batchId), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                if (data && data.success) {
+                    renderTableData(data);
+                    try {
+                        window.history.pushState(null, '', '/?batch=' + encodeURIComponent(batchId));
+                    } catch (e) {}
+                }
+            } catch (err) {
+                console.error('Gagal memuat batch data:', err);
+            } finally {
+                isBatchLoading = false;
+                if (tableEl) tableEl.style.opacity = '1';
+            }
+        }
+        window.loadBatchData = loadBatchData;
+
+        function onBatchSelectChange(batchId) {
+            const select = document.getElementById('batch-select');
+            if (select && select.value !== batchId) {
+                select.value = batchId;
+            }
+            loadBatchData(batchId);
+        }
+        window.onBatchSelectChange = onBatchSelectChange;
+
+        window.currentCategory = 'ALL';
         function filterBatchesByCategory(targetCat) {
+            window.currentCategory = targetCat;
+
+            // 1. Update pill styling
             const pills = document.querySelectorAll('.js-cat-pill');
             pills.forEach(p => {
                 if (p.getAttribute('data-cat') === targetCat) {
@@ -1139,16 +1427,36 @@
                 }
             });
 
-            const batchLinks = document.querySelectorAll('.js-batch-link');
-            batchLinks.forEach(link => {
-                const bCat = link.getAttribute('data-komoditi') || 'Lainnya';
-                if (targetCat === 'ALL' || bCat === targetCat) {
-                    link.style.display = 'inline-flex';
+            // 2. Filter dropdown options
+            const select = document.getElementById('batch-select');
+            if (!select) return;
+
+            let firstVisibleOpt = null;
+            let currentSelectedIsVisible = false;
+
+            Array.from(select.options).forEach(opt => {
+                const optCat = opt.getAttribute('data-komoditi') || 'Lainnya';
+                const isMatch = (targetCat === 'ALL' || optCat === targetCat);
+                if (isMatch) {
+                    opt.hidden = false;
+                    opt.disabled = false;
+                    opt.style.display = '';
+                    if (!firstVisibleOpt) firstVisibleOpt = opt;
+                    if (opt.value === select.value) currentSelectedIsVisible = true;
                 } else {
-                    link.style.display = 'none';
+                    opt.hidden = true;
+                    opt.disabled = true;
+                    opt.style.display = 'none';
                 }
             });
+
+            // 3. Auto-select first matching batch if current selection is not in the filtered category
+            if (!currentSelectedIsVisible && firstVisibleOpt) {
+                select.value = firstVisibleOpt.value;
+                loadBatchData(firstVisibleOpt.value);
+            }
         }
+        window.filterBatchesByCategory = filterBatchesByCategory;
 
         function printBarcodeLabel() {
             const sampleCode = (document.getElementById('modal-sample-code').innerText || 'QR_Code').trim();
