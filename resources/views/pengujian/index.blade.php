@@ -1524,13 +1524,26 @@
             printWindow.document.close();
         }
 
+        // ─── 4. POP-UP MODAL QR CODE BESAR ───
+        const qrModal = document.getElementById('qr-modal');
+        let currentRawQrContent = '';
+        let currentTargetUrl = '';
+
         function openQrModal(qrToken, title, code, qrContent, scanUrl, pdfUrl, qrBase64) {
+            const modal = document.getElementById('qr-modal');
+            if (!modal) return;
+
             currentRawQrContent = (qrContent || code || '').replace(/^Wilayah:\s*/gim, 'Lokasi Sampel: ');
             currentTargetUrl = scanUrl || pdfUrl;
 
-            document.getElementById('modal-sample-code').innerText = code || 'SMP';
-            document.getElementById('modal-sample-title').innerText = title || 'Sampel Pengujian';
-            document.getElementById('modal-qr-content').innerText = currentRawQrContent;
+            const codeEl = document.getElementById('modal-sample-code');
+            if (codeEl) codeEl.innerText = code || 'SMP';
+
+            const titleEl = document.getElementById('modal-sample-title');
+            if (titleEl) titleEl.innerText = title || 'Sampel Pengujian';
+
+            const contentEl = document.getElementById('modal-qr-content');
+            if (contentEl) contentEl.innerText = currentRawQrContent;
             
             const targetUrlEl = document.getElementById('modal-target-url');
             if (targetUrlEl) {
@@ -1538,11 +1551,14 @@
                 targetUrlEl.href = currentTargetUrl;
             }
 
-            document.getElementById('modal-btn-pdf').href = pdfUrl || currentTargetUrl;
+            const btnPdf = document.getElementById('modal-btn-pdf');
+            if (btnPdf) btnPdf.href = pdfUrl || currentTargetUrl;
 
             const qrImg = document.getElementById('modal-qr-img');
-            const svgDataUri = qrBase64 ? ('data:image/svg+xml;base64,' + qrBase64) : ('/qr/' + qrToken);
-            qrImg.src = svgDataUri;
+            if (qrImg) {
+                const svgDataUri = qrBase64 ? ('data:image/svg+xml;base64,' + qrBase64) : ('/qr/' + qrToken);
+                qrImg.src = svgDataUri;
+            }
 
             modal.classList.remove('hidden');
         }
@@ -1611,7 +1627,8 @@
         }
 
         function closeQrModal() {
-            modal.classList.add('hidden');
+            const modal = document.getElementById('qr-modal');
+            if (modal) modal.classList.add('hidden');
             const qrImg = document.getElementById('modal-qr-img');
             if (qrImg) qrImg.src = '';
         }
@@ -1663,18 +1680,18 @@
 
         // Close on ESC key or clicking outside backdrop
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            const modal = document.getElementById('qr-modal');
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
                 closeQrModal();
             }
         });
 
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeQrModal();
-                }
-            });
-        }
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('qr-modal');
+            if (modal && e.target === modal) {
+                closeQrModal();
+            }
+        });
 
         // ─── 4. PHOTO EXPORT MODAL LOGIC ───
         const photoModal = document.getElementById('photo-export-modal');
