@@ -102,7 +102,7 @@ class PengujianTest extends TestCase
 
     public function test_pdf_view_renders_spu_berita_acara_and_omits_qr_code()
     {
-        $this->post('/load-sample');
+        $this->post('/load-sample-pdf');
         $item = PengujianItem::first();
 
         // Render blade view directly to inspect HTML content before PDF conversion
@@ -112,7 +112,7 @@ class PengujianTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('SURAT PERMINTAAN UJI', $singleHtml);
-        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $singleHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0044', $singleHtml);
         $this->assertStringContainsString('Komoditi', $singleHtml);
         $this->assertStringContainsString('Anggaran', $singleHtml);
         $this->assertStringContainsString('Asal Sampling', $singleHtml);
@@ -130,7 +130,7 @@ class PengujianTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('SURAT PERMINTAAN UJI', $batchHtml);
-        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $batchHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0044', $batchHtml);
         $this->assertStringNotContainsString('<th class="col-qr"', $batchHtml);
         $this->assertStringNotContainsString('QR Code', $batchHtml);
     }
@@ -139,9 +139,13 @@ class PengujianTest extends TestCase
     {
         $service = new \App\Services\PdfImportService();
 
-        // 1. Test parsing K1 M0 R1 to Lokasi Sampel (0 is omitted)
-        $lokasi1 = $service->parseLokasiSampel('K1 M0 R1', 'Narkotika');
-        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $lokasi1);
+        // 1. Kategori Narkotika selalu dipastikan masuk ke Kimia meskipun ada catatan
+        $lokasiNarkotika = $service->parseLokasiSampel('K1 M0 R1', 'Narkotika');
+        $this->assertEquals('Kimia', $lokasiNarkotika);
+
+        // Untuk non-narkotika (misal Obat/Kosmetik), catatan K/M/R didekode sesuai isinya (0 diabaikan)
+        $lokasiNonNarkotika = $service->parseLokasiSampel('K1 M0 R1', 'Obat');
+        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $lokasiNonNarkotika);
 
         $lokasi2 = $service->parseLokasiSampel('K2 M1 R0', 'Obat Tradisional');
         $this->assertEquals('Kimia 2 Sampel dan Mikro 1 Sampel', $lokasi2);
@@ -263,8 +267,18 @@ class PengujianTest extends TestCase
         $this->assertEquals('2', $counts['M']);
         $this->assertEquals('1', $counts['A']);
 
-        // Update item data dengan catatan baru untuk memverifikasi rendering view PDF
+        // Uji bahwa kategori Narkotika selalu dipastikan masuk ke Kimia meskipun memiliki catatan K/M/A
+        $narkotikaLokasi = \App\Models\LokasiSampel::parseCatatan('K2, M0, A1', 'Narkotika - Kepolisian', 'Narkotika');
+        $this->assertEquals('Kimia', $narkotikaLokasi);
+
+        // Uji catatan untuk non-narkotika seperti Surabaya tetap sesuai isi catatannya
+        $surabayaLokasi = \App\Models\LokasiSampel::parseCatatan('Surabaya K80, A20', 'Obat', 'Obat');
+        $this->assertEquals('Kimia 80 Sampel dan Arsip 20 Sampel', $surabayaLokasi);
+
+        // Update item data dengan catatan baru dan komoditi Kosmetika untuk memverifikasi rendering view PDF
         $itemData = $item->data;
+        $itemData['Komoditi'] = 'Kosmetika';
+        $itemData['Jenis Sampel'] = 'Kosmetika';
         $itemData['Catatan'] = $sampleCatatan;
         $item->data = $itemData;
         $item->save();
@@ -297,5 +311,27 @@ class PengujianTest extends TestCase
         // Verify that internal metadata fields do not appear as table headers
         $this->assertStringNotContainsString('<th>manager_administrasi</th>', $html);
         $this->assertStringNotContainsString('<th>kepala_balai</th>', $html);
+    }
+
+    public function test_multiple_files_upload_creates_batches_and_items()
+    {
+        $csvContent1 = "Kode Sampel,Nama Produk\nSMP-A01,Produk A1\nSMP-A02,Produk A2\n";
+        $csvContent2 = "Kode Sampel,Nama Produk\nSMP-B01,Produk B1\n";
+
+        $file1 = \Illuminate\Http\UploadedFile::fake()->createWithContent('file1.csv', $csvContent1);
+        $file2 = \Illuminate\Http\UploadedFile::fake()->createWithContent('file2.csv', $csvContent2);
+
+        $response = $this->postJson('/api/pengujian/upload', [
+            'files' => [$file1, $file2],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'file_count' => 2,
+            'count' => 3,
+        ]);
+
+        $this->assertEquals(3, PengujianItem::whereIn('filename', ['file1.csv', 'file2.csv'])->count());
     }
 }

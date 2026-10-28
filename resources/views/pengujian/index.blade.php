@@ -278,22 +278,51 @@
         <!-- SECTION 2: BATCH SELECTION & FILTER -->
         @if($batches->isNotEmpty())
             <div class="space-y-3">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">File / Batch:</span>
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            @foreach($batches as $b)
-                                <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
-                                   class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
-                                    {{ $b->filename ?: $b->batch_id }} 
-                                    @if(!empty($b->sheet_name) && $b->sheet_name !== 'Sheet1')
-                                        <span class="opacity-80">[{{ $b->sheet_name }}]</span>
-                                    @endif
-                                    ({{ $b->total_items }})
-                                </a>
+                <div class="flex flex-col gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                    @php
+                        $catCounts = [];
+                        foreach($batches as $b) {
+                            $cat = $b->komoditi ?: 'Lainnya';
+                            $catCounts[$cat] = ($catCounts[$cat] ?? 0) + 1;
+                        }
+                    @endphp
+
+                    @if(count($catCounts) > 1)
+                        <div class="flex items-center gap-1.5 flex-wrap pb-2.5 border-b border-slate-100" id="batch-cat-filters">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Kategori:</span>
+                            <button type="button" onclick="filterBatchesByCategory('ALL')" class="js-cat-pill active px-3 py-1 rounded-full text-xs font-bold transition-all bg-[#005baa] text-white shadow-xs cursor-pointer" data-cat="ALL">
+                                Semua ({{ $batches->count() }})
+                            </button>
+                            @foreach($catCounts as $cName => $cCount)
+                                <button type="button" onclick="filterBatchesByCategory('{{ $cName }}')" class="js-cat-pill px-3 py-1 rounded-full text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-cat="{{ $cName }}">
+                                    {{ $cName }} ({{ $cCount }})
+                                </button>
                             @endforeach
                         </div>
-                    </div>
+                    @endif
+
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilihan Batch:</span>
+                            <div class="flex items-center gap-1.5 flex-wrap" id="batch-buttons-container">
+                                @foreach($batches as $b)
+                                    <a href="{{ route('pengujian.index', ['batch' => $b->batch_id]) }}" 
+                                       data-komoditi="{{ $b->komoditi ?: 'Lainnya' }}"
+                                       class="js-batch-link inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-colors {{ $selectedBatchId === $b->batch_id ? 'bg-[#005baa] text-white border-[#005baa] shadow-2xs font-semibold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' }}">
+                                        <span>{{ $b->filename ?: $b->batch_id }}</span>
+                                        @if(!empty($b->komoditi))
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold {{ $selectedBatchId === $b->batch_id ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200/60' }}">
+                                                {{ $b->komoditi }}
+                                            </span>
+                                        @endif
+                                        @if(!empty($b->sheet_name) && $b->sheet_name !== 'Sheet1')
+                                            <span class="opacity-80">[{{ $b->sheet_name }}]</span>
+                                        @endif
+                                        <span class="font-semibold">({{ $b->total_items }})</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>      </div>
 
                     <!-- Batch Export and Delete Actions -->
                     <div class="flex items-center gap-2 flex-wrap">
@@ -495,7 +524,11 @@
                                                     data-info="{{ $item->qr_content ?: ($item->code ?: '-') }}"
                                                     data-qr-base64="{{ $item->qr_base64 }}">
                                                 <div class="w-14 h-14 flex items-center justify-center p-0.5">
-                                                    {!! $item->qr_svg_small !!}
+                                                    @if(!empty($item->qr_svg_small))
+                                                        {!! $item->qr_svg_small !!}
+                                                    @else
+                                                        <img src="{{ route('pengujian.qr', $item->qr_token) }}" alt="QR Code" class="w-full h-full object-contain" loading="lazy" />
+                                                    @endif
                                                 </div>
                                             </button>
                                         </div>
@@ -523,16 +556,6 @@
                                                title="Export dokumen PDF baris data ini">
                                                 <span>Export PDF</span>
                                             </a>
-
-                                            <button type="button"
-                                                    class="js-btn-photo-modal inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs transition-colors"
-                                                    title="Export PDF disertai lampiran foto sampel"
-                                                    data-id="{{ $item->id }}"
-                                                    data-title="{{ $item->display_title }}"
-                                                    data-code="{{ $item->code }}"
-                                                    data-action-url="{{ route('pengujian.pdf.post', $item->id) }}">
-                                                <span>+ Foto</span>
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -630,13 +653,17 @@
                 </div>
 
                 <!-- Action Buttons in Modal -->
-                <div class="grid grid-cols-2 gap-2.5 pt-1">
-                    <button type="button" id="modal-btn-download-png" onclick="downloadQrPng()" class="inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all border border-slate-200" title="Unduh gambar QR Code berformat PNG siap cetak / print">
-                        <span>Unduh QR (PNG)</span>
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <button type="button" onclick="printBarcodeLabel()" class="inline-flex items-center justify-center py-2.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all cursor-pointer" title="Cetak langsung stiker label barcode ke printer label">
+                        <span>Cetak Barcode</span>
                     </button>
 
-                    <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all">
-                        <span>Buka PDF Baris Ini</span>
+                    <button type="button" id="modal-btn-download-png" onclick="downloadQrPng()" class="inline-flex items-center justify-center py-2.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all border border-slate-200 cursor-pointer" title="Unduh gambar QR Code berformat PNG siap cetak / print">
+                        <span>Unduh PNG</span>
+                    </button>
+
+                    <a id="modal-btn-pdf" href="#" target="_blank" class="inline-flex items-center justify-center py-2.5 px-2 rounded-xl bg-[#005baa] hover:bg-[#004887] text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+                        <span>Buka PDF</span>
                     </a>
                 </div>
             </div>
@@ -920,8 +947,95 @@
         let currentRawQrContent = '';
         let currentTargetUrl = '';
 
+        function filterBatchesByCategory(targetCat) {
+            const pills = document.querySelectorAll('.js-cat-pill');
+            pills.forEach(p => {
+                if (p.getAttribute('data-cat') === targetCat) {
+                    p.className = 'js-cat-pill active px-3 py-1 rounded-full text-xs font-bold transition-all bg-[#005baa] text-white shadow-xs cursor-pointer';
+                } else {
+                    p.className = 'js-cat-pill px-3 py-1 rounded-full text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer';
+                }
+            });
+
+            const batchLinks = document.querySelectorAll('.js-batch-link');
+            batchLinks.forEach(link => {
+                const bCat = link.getAttribute('data-komoditi') || 'Lainnya';
+                if (targetCat === 'ALL' || bCat === targetCat) {
+                    link.style.display = 'inline-flex';
+                } else {
+                    link.style.display = 'none';
+                }
+            });
+        }
+
+        function printBarcodeLabel() {
+            const sampleCode = (document.getElementById('modal-sample-code').innerText || 'QR_Code').trim();
+            const qrImg = document.getElementById('modal-qr-img');
+            const sampleTitle = document.getElementById('modal-sample-title').innerText || 'Sampel Uji';
+            const infoText = (document.getElementById('modal-qr-content').innerText || '').replace(/^Wilayah:\s*/gim, 'Lokasi Sampel: ');
+
+            const printWindow = window.open('', '_blank', 'width=600,height=600');
+            if (!printWindow) {
+                alert('Harap izinkan pop-up pada browser untuk mencetak label barcode!');
+                return;
+            }
+
+            printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cetak Label Barcode - ${sampleCode}</title>
+    <style>
+        @page { size: auto; margin: 3mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; padding: 8px; display: flex; justify-content: center; }
+        .label-card { width: 105mm; min-height: 52mm; border: 2px solid #000; border-radius: 6px; padding: 10px; background: #fff; }
+        .label-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #000; padding-bottom: 5px; margin-bottom: 8px; }
+        .header-title { font-size: 9.5pt; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
+        .header-sub { font-size: 7.5pt; color: #333; }
+        .badge { font-size: 7.5pt; font-weight: bold; border: 1px solid #000; padding: 1px 5px; border-radius: 3px; }
+        .label-body { display: flex; gap: 12px; align-items: flex-start; }
+        .qr-box { width: 155px; text-align: center; flex-shrink: 0; }
+        .qr-box img { width: 150px; height: 150px; display: block; margin: 0 auto; object-fit: contain; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        .info-box { flex: 1; min-width: 0; }
+        .code-title { font-family: monospace; font-size: 11pt; font-weight: bold; display: block; margin-bottom: 4px; word-break: break-all; border-bottom: 1px dashed #666; padding-bottom: 3px; }
+        .sample-title { font-size: 8.5pt; font-weight: bold; line-height: 1.25; margin-bottom: 5px; }
+        .info-text { font-size: 7.5pt; line-height: 1.35; color: #111; white-space: pre-line; max-height: 140px; overflow: hidden; word-break: break-word; }
+        @media print { body { padding: 0; } .label-card { border-width: 1.5px; } }
+    </style>
+</head>
+<body>
+    <div class="label-card">
+        <div class="label-header">
+            <div>
+                <div class="header-title">BALAI BESAR POM DI MATARAM</div>
+                <div class="header-sub">Laboratorium Pengujian &bull; Kode Sampel</div>
+            </div>
+            <div class="badge">RESMI</div>
+        </div>
+        <div class="label-body">
+            <div class="qr-box">
+                <img src="${qrImg.src}" alt="QR" />
+            </div>
+            <div class="info-box">
+                <div class="code-title">${sampleCode}</div>
+                <div class="sample-title">${sampleTitle}</div>
+                <div class="info-text">${infoText}</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.onload = function() {
+            setTimeout(function() { window.print(); }, 300);
+        };
+    </script>
+</body>
+</html>`);
+            printWindow.document.close();
+        }
+
         function openQrModal(qrToken, title, code, qrContent, scanUrl, pdfUrl, qrBase64) {
-            currentRawQrContent = qrContent || code;
+            currentRawQrContent = (qrContent || code || '').replace(/^Wilayah:\s*/gim, 'Lokasi Sampel: ');
             currentTargetUrl = scanUrl || pdfUrl;
 
             document.getElementById('modal-sample-code').innerText = code || 'SMP';

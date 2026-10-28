@@ -74,10 +74,15 @@ class LokasiSampel extends Model
         $master = static::getMasterMap();
 
         $isNarkotika = false;
-        if (!empty($jenisSampel) && preg_match('/narkotika/i', $jenisSampel)) {
+        if (!empty($jenisSampel) && preg_match('/narkotika|narkoba/i', $jenisSampel)) {
             $isNarkotika = true;
-        } elseif (!empty($komoditi) && preg_match('/narkotika/i', $komoditi)) {
+        } elseif (!empty($komoditi) && preg_match('/narkotika|narkoba/i', $komoditi)) {
             $isNarkotika = true;
+        }
+
+        // PENTING: Untuk kategori Narkotika, selalu pastikan masuk ke Laboratorium Kimia
+        if ($isNarkotika) {
+            return $master['K'] ?? 'Kimia';
         }
 
         $cleanCatatan = trim($catatan ?? '');
@@ -89,7 +94,7 @@ class LokasiSampel extends Model
 
         // 1. Catatan kosong atau strip
         if ($cleanCatatan === '' || $cleanCatatan === '-') {
-            return $isNarkotika ? ($master['K'] ?? 'Kimia') : '-';
+            return '-';
         }
 
         // 2. Cari kode lokasi huruf diikuti angka (misal K2, M2, A1, R1, P1, K1 M0 R1)
@@ -118,15 +123,10 @@ class LokasiSampel extends Model
             }
 
             // Jika semua count bernilai 0 (misal K0 M0 R0)
-            return $isNarkotika ? ($master['K'] ?? 'Kimia') : '-';
+            return '-';
         }
 
-        // Jika tidak ada kode K/M/R/A/P/S tapi jenis sampel narkotika
-        if ($isNarkotika) {
-            return $master['K'] ?? 'Kimia';
-        }
-
-        // Jika bukan narkotika dan tidak ada kode, kembalikan teks catatan apa adanya
+        // Kembalikan teks catatan apa adanya
         return $cleanCatatan;
     }
 

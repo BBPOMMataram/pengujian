@@ -34,6 +34,20 @@ class ApiPengujianController extends Controller
                 ->groupBy('batch_id', 'file_group_id', 'filename', 'sheet_name')
                 ->orderByDesc('created_at')
                 ->get();
+
+            $pdfService = new \App\Services\PdfImportService();
+            foreach ($batches as $b) {
+                $sample = PengujianItem::where('batch_id', $b->batch_id)->first();
+                $komoditiVal = null;
+                if ($sample && is_array($sample->data)) {
+                    $komoditiVal = $sample->data['_meta']['komoditi'] 
+                        ?? $sample->data['Komoditi'] 
+                        ?? $sample->data['komoditi'] 
+                        ?? $sample->data['Jenis Sampel'] 
+                        ?? null;
+                }
+                $b->komoditi = $pdfService->mapKomoditi($komoditiVal ?: $b->filename);
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API DB Index error: ' . $e->getMessage());
             $dbError = $e->getMessage();
@@ -74,16 +88,39 @@ class ApiPengujianController extends Controller
             // The QR code encodes the direct URL pointing to the row's PDF export
             $contentToEncode = $targetUrl;
             $item->qr_content_display = $item->qr_content ?: ($item->code ?: $targetUrl);
+            $item->qr_url = route('pengujian.qr', $item->qr_token);
 
-            // Generate small SVG for table column
-            $item->qr_svg_small = (string) QrCode::size(68)->margin(1)->generate($contentToEncode);
-            
-            // Generate large SVG for popup modal
-            $item->qr_svg_large = (string) QrCode::size(260)->margin(2)->generate($contentToEncode);
-            $item->qr_base64 = base64_encode($item->qr_svg_large);
+            // Optimization: Do not compute heavy SVGs synchronously for all items in index().
+            // Frontend loads QR asynchronously via item.qr_url or /qr/{qrToken} with lazy loading and HTTP caching.
+            $item->qr_svg_small = null;
+            $item->qr_svg_large = null;
+            $item->qr_base64 = null;
 
             if (is_array($item->data)) {
+                $komoditiVal = $item->data['Komoditi'] ?? $item->data['komoditi'] ?? $item->data['Jenis Sampel'] ?? null;
+                if ($komoditiVal && preg_match('/narkotika|narkoba/i', $komoditiVal)) {
+                    $itemData = $item->data;
+                    $itemData['Lokasi Sampel'] = 'Kimia';
+                    $item->data = $itemData;
+                    if ($item->qr_content) {
+                        $item->qr_content = preg_replace('/(Lokasi Sampel:\s*).*/i', '$1Kimia', $item->qr_content);
+                        $item->qr_content_display = $item->qr_content;
+                    }
+                }
+
+                $ignoredKeys = [
+                    'manager_administrasi', 'nip_manager_administrasi',
+                    'kepala_balai', 'nip_kepala_balai',
+                    'petugas_penerima', 'nip_petugas_penerima',
+                    'tanggal_spu', 'no_spu', 'nomor spu', 'nomor_spu',
+                    '_meta'
+                ];
+
                 foreach (array_keys($item->data) as $h) {
+                    $hLower = strtolower(trim($h));
+                    if (str_starts_with($h, '_') || in_array($hLower, $ignoredKeys)) {
+                        continue;
+                    }
                     if (!in_array($h, $headers)) {
                         $headers[] = $h;
                     }
@@ -124,83 +161,126 @@ class ApiPengujianController extends Controller
      */
     public function upload(Request $request)
     {
-        $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv,pdf|max:25600',
-        ], [
-            'excel_file.required' => 'Silakan pilih file Excel, CSV, atau PDF terlebih dahulu.',
-            'excel_file.mimes' => 'Format file harus berupa Excel (.xlsx, .xls), .csv, atau .pdf.',
-            'excel_file.max' => 'Ukuran file maksimal 25 MB.',
-        ]);
+        $uploadedFiles = $request->file('files');
+        if (!$uploadedFiles) {
+            $uploadedFiles = $request->file('excel_files') ?: $request->file('excel_file');
+        }
+        if (!is_array($uploadedFiles)) {
+            $uploadedFiles = $uploadedFiles ? [$uploadedFiles] : [];
+        }
 
-        $file = $request->file('excel_file');
-        $originalFilename = $file->getClientOriginalName();
-        $fileGroupId = 'FILE-' . date('Ymd-His') . '-' . Str::random(4);
-        $extension = strtolower($file->getClientOriginalExtension());
+        if (empty($uploadedFiles)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Silakan pilih setidaknya satu file Excel, CSV, atau PDF terlebih dahulu.',
+            ], 422);
+        }
 
-        // Handle PDF import
-        if ($extension === 'pdf') {
-            try {
-                $pdfService = new \App\Services\PdfImportService();
-                $count = $pdfService->import($file->getRealPath(), $fileGroupId, $originalFilename);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "Dokumen PDF \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil diekstraksi ke tabel & QR Code ter-generate otomatis.",
-                    'batch_id' => $fileGroupId,
-                    'count' => $count,
-                ]);
-            } catch (\Throwable $e) {
+        // Validate each file
+        $allowedExts = ['xlsx', 'xls', 'csv', 'pdf'];
+        foreach ($uploadedFiles as $file) {
+            if (!$file->isValid()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal memproses file PDF: ' . $e->getMessage(),
+                    'message' => 'Salah satu file yang diunggah tidak valid atau rusak.',
+                ], 422);
+            }
+            $ext = strtolower($file->getClientOriginalExtension());
+            if (!in_array($ext, $allowedExts)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Format file \"{$file->getClientOriginalName()}\" tidak didukung. Harap unggah file .xlsx, .xls, .csv, atau .pdf.",
+                ], 422);
+            }
+            if ($file->getSize() > 25600 * 1024) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Ukuran file \"{$file->getClientOriginalName()}\" melebihi batas maksimal 25 MB.",
                 ], 422);
             }
         }
 
-        // Check for multiple sheets in Excel files
-        $sheetNames = ['Worksheet'];
-        if (in_array($extension, ['xlsx', 'xls'])) {
+        $pdfService = new \App\Services\PdfImportService();
+        $importedBatches = [];
+        $totalRows = 0;
+        $fileSuccessCount = 0;
+        $errors = [];
+        $lastBatchId = null;
+
+        foreach ($uploadedFiles as $file) {
+            $originalFilename = $file->getClientOriginalName();
+            $fileGroupId = 'FILE-' . date('Ymd-His') . '-' . Str::random(4);
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            if ($extension === 'pdf') {
+                try {
+                    $count = $pdfService->import($file->getRealPath(), $fileGroupId, $originalFilename);
+                    $importedBatches[] = $fileGroupId;
+                    $lastBatchId = $fileGroupId;
+                    $totalRows += $count;
+                    $fileSuccessCount++;
+                } catch (\Throwable $e) {
+                    $errors[] = "PDF \"{$originalFilename}\": " . $e->getMessage();
+                }
+                continue;
+            }
+
+            // Excel / CSV
+            $sheetNames = ['Worksheet'];
+            if (in_array($extension, ['xlsx', 'xls'])) {
+                try {
+                    $reader = IOFactory::createReaderForFile($file->getRealPath());
+                    $sheetNames = $reader->listWorksheetNames($file->getRealPath());
+                } catch (\Throwable $e) {
+                    $sheetNames = ['Worksheet'];
+                }
+            }
+
             try {
-                $reader = IOFactory::createReaderForFile($file->getRealPath());
-                $sheetNames = $reader->listWorksheetNames($file->getRealPath());
+                if (count($sheetNames) > 1) {
+                    Excel::import(new PengujianMultipleSheetsImport($fileGroupId, $originalFilename, $sheetNames), $file);
+                    $firstSheetBatch = $fileGroupId . '__' . Str::slug($sheetNames[0]);
+                    $count = PengujianItem::where('file_group_id', $fileGroupId)->count();
+                    $importedBatches[] = $firstSheetBatch;
+                    $lastBatchId = $firstSheetBatch;
+                    $totalRows += $count;
+                    $fileSuccessCount++;
+                } else {
+                    $sheetName = $sheetNames[0] ?? 'Sheet1';
+                    Excel::import(new PengujianImport($fileGroupId, $originalFilename, $sheetName, $fileGroupId), $file);
+                    $count = PengujianItem::where('batch_id', $fileGroupId)->count();
+                    $importedBatches[] = $fileGroupId;
+                    $lastBatchId = $fileGroupId;
+                    $totalRows += $count;
+                    $fileSuccessCount++;
+                }
             } catch (\Throwable $e) {
-                $sheetNames = ['Worksheet'];
+                $errors[] = "File \"{$originalFilename}\": " . $e->getMessage();
             }
         }
 
-        try {
-            if (count($sheetNames) > 1) {
-                Excel::import(new PengujianMultipleSheetsImport($fileGroupId, $originalFilename, $sheetNames), $file);
-                
-                $firstSheetBatch = $fileGroupId . '__' . Str::slug($sheetNames[0]);
-                $count = PengujianItem::where('file_group_id', $fileGroupId)->count();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "File \"{$originalFilename}\" berhasil diimpor! Terdeteksi " . count($sheetNames) . " Tab/Sheet terpisah (Total {$count} baris data).",
-                    'batch_id' => $firstSheetBatch,
-                    'file_group_id' => $fileGroupId,
-                    'count' => $count,
-                ]);
-            } else {
-                $sheetName = $sheetNames[0] ?? 'Sheet1';
-                Excel::import(new PengujianImport($fileGroupId, $originalFilename, $sheetName, $fileGroupId), $file);
-
-                $count = PengujianItem::where('batch_id', $fileGroupId)->count();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "File \"{$originalFilename}\" berhasil diimpor! Total {$count} baris data berhasil dimuat & QR Code ter-generate otomatis.",
-                    'batch_id' => $fileGroupId,
-                    'count' => $count,
-                ]);
-            }
-        } catch (\Throwable $e) {
+        if ($fileSuccessCount === 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses file: ' . $e->getMessage(),
+                'message' => 'Gagal memproses file: ' . implode('; ', $errors),
             ], 422);
         }
+
+        $msg = $fileSuccessCount === 1
+            ? "Dokumen \"{$uploadedFiles[0]->getClientOriginalName()}\" berhasil diimpor! Total {$totalRows} baris data berhasil dimuat & QR Code ter-generate otomatis."
+            : "Berhasil mengimpor {$fileSuccessCount} file sekaligus! Total {$totalRows} baris data berhasil dimuat & QR Code ter-generate otomatis.";
+
+        if (!empty($errors)) {
+            $msg .= " (Catatan kendala: " . implode('; ', $errors) . ")";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $msg,
+            'batch_id' => $lastBatchId,
+            'count' => $totalRows,
+            'file_count' => $fileSuccessCount,
+        ]);
     }
 
     /**

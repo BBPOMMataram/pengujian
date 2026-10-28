@@ -51,7 +51,7 @@
             letter-spacing: 0.5px;
         }
         .spu-qr-td {
-            width: 120px;
+            width: 135px;
             vertical-align: middle;
             text-align: right;
         }
@@ -59,23 +59,23 @@
             display: inline-block;
             text-align: center;
             border: 1px solid #cbd5e1;
-            padding: 3px 5px;
+            padding: 4px 6px;
             border-radius: 4px;
             background-color: #f8fafc;
         }
         .spu-qr-box img {
-            width: 44px;
-            height: 44px;
+            width: 58px;
+            height: 58px;
             display: block;
             margin: 0 auto;
         }
         .spu-qr-caption {
-            font-size: 6pt;
+            font-size: 6.5pt;
             font-weight: bold;
             color: #475569;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            margin-top: 1px;
+            margin-top: 2px;
         }
 
         /* PREAMBLE & METADATA */
@@ -227,24 +227,25 @@
             ?? $firstData['spu'] 
             ?? $firstData['nomor_spu'] 
             ?? 'SPU.117.05.26.10.16.0036';
+        $namaUnit = $firstMeta['nama_unit'] ?? null;
 
         // 2. Metadata Pengujian (Komoditi, Anggaran, Asal Sampling)
-        $jenisSampelHead = $firstData['jenis_sampel'] ?? $firstData['Jenis Sampel'] ?? 'Narkotika - Pihak Ke 3 - Kepolisian';
+        $jenisSampelHead = $firstData['jenis_sampel'] ?? $firstData['Jenis Sampel'] ?? '-';
         $komoditi = $firstMeta['komoditi'] 
             ?? $firstData['komoditi'] 
             ?? $firstData['Komoditi'] 
-            ?? ($jenisSampelHead ? (str_contains($jenisSampelHead, ' - ') ? explode(' - ', $jenisSampelHead)[0] : $jenisSampelHead) : 'Narkotika');
+            ?? ($jenisSampelHead && $jenisSampelHead !== '-' ? (str_contains($jenisSampelHead, ' - ') ? explode(' - ', $jenisSampelHead)[0] : $jenisSampelHead) : '-');
         
         $anggaran = $firstMeta['anggaran'] 
             ?? $firstData['anggaran'] 
             ?? $firstData['Anggaran'] 
-            ?? 'Pihak Ke 3 - Kepolisian';
+            ?? null;
         
         $asalSampling = $firstMeta['asal_sampling'] 
             ?? $firstData['asal_sampling'] 
             ?? $firstData['Asal Sampling'] 
             ?? $firstData['asal_sampel'] 
-            ?? 'Kepolisian';
+            ?? null;
 
         // 3. Tanggal Resmi Format Indonesia
         $bulanIndo = [
@@ -274,30 +275,30 @@
             $tanggalFormatted = $now->day . ' ' . ($bulanIndo[$now->month] ?? $now->format('F')) . ' ' . $now->year;
         }
 
-        // 4. Pejabat Resmi SPU BBPOM di Mataram (3 Kolom Sesuai Format SPU):
+        // 4. Pejabat Resmi SPU BBPOM di Mataram (Dinamis: Jika kosong di file yang diunggah, tetap kosongkan)
         $petugasPenerimaNama = $firstMeta['petugas_penerima'] 
             ?? $firstData['petugas_penerima'] 
             ?? $firstData['Petugas Penerima'] 
-            ?? 'Nirmala Nurhasanah, STP';
+            ?? null;
         $petugasPenerimaNip = $firstMeta['nip_petugas_penerima'] 
             ?? $firstData['nip_petugas_penerima'] 
-            ?? '199205172023212054';
+            ?? null;
 
         $managerAdministrasiNama = $firstMeta['manager_administrasi'] 
             ?? $firstData['manager_administrasi'] 
             ?? $firstData['Manager Administrasi'] 
-            ?? 'Basuki Murdi Hartono, SH.';
+            ?? null;
         $managerAdministrasiNip = $firstMeta['nip_manager_administrasi'] 
             ?? $firstData['nip_manager_administrasi'] 
-            ?? '197904052005011002';
+            ?? null;
 
         $kepalaBalaiNama = $firstMeta['kepala_balai'] 
             ?? $firstData['kepala_balai'] 
             ?? $firstData['Kepala Balai'] 
-            ?? 'Yogi Abaso Mataram, S.Si., Apt';
+            ?? null;
         $nipKepalaBalai = $firstMeta['nip_kepala_balai'] 
             ?? $firstData['nip_kepala_balai'] 
-            ?? '198101242009121002';
+            ?? null;
     @endphp
 
     <!-- ================================================================ -->
@@ -328,21 +329,34 @@
     <div class="spu-preamble">
         <p>Bersama ini disampaikan daftar sampel:</p>
         <table class="spu-meta-table">
-            <tr>
-                <td class="spu-meta-lbl">Komoditi</td>
-                <td class="spu-meta-sep">:</td>
-                <td class="spu-meta-val">{{ $komoditi }}</td>
-            </tr>
-            <tr>
-                <td class="spu-meta-lbl">Anggaran</td>
-                <td class="spu-meta-sep">:</td>
-                <td class="spu-meta-val">{{ $anggaran }}</td>
-            </tr>
-            <tr>
-                <td class="spu-meta-lbl">Asal Sampling</td>
-                <td class="spu-meta-sep">:</td>
-                <td class="spu-meta-val">{{ $asalSampling }}</td>
-            </tr>
+            @if(!empty($namaUnit))
+                <tr>
+                    <td class="spu-meta-lbl">Nama Unit</td>
+                    <td class="spu-meta-sep">:</td>
+                    <td class="spu-meta-val">{{ $namaUnit }}</td>
+                </tr>
+            @endif
+            @if(!empty($komoditi) && $komoditi !== '-')
+                <tr>
+                    <td class="spu-meta-lbl">Komoditi</td>
+                    <td class="spu-meta-sep">:</td>
+                    <td class="spu-meta-val">{{ $komoditi }}</td>
+                </tr>
+            @endif
+            @if(!empty($anggaran))
+                <tr>
+                    <td class="spu-meta-lbl">Anggaran</td>
+                    <td class="spu-meta-sep">:</td>
+                    <td class="spu-meta-val">{{ $anggaran }}</td>
+                </tr>
+            @endif
+            @if(!empty($asalSampling))
+                <tr>
+                    <td class="spu-meta-lbl">Asal Sampling</td>
+                    <td class="spu-meta-sep">:</td>
+                    <td class="spu-meta-val">{{ $asalSampling }}</td>
+                </tr>
+            @endif
         </table>
         <p style="margin-top: 3px;">Untuk dilakukan pengujian sesuai ruang lingkup</p>
     </div>
@@ -387,11 +401,12 @@
 
                     // 3. Catatan & Dekode Lokasi Sampel (K2, M2, A1 -> Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel)
                     $catatan = $dataArr['catatan'] ?? $dataArr['Catatan'] ?? '-';
-                    $lokasiSampel = \App\Models\LokasiSampel::parseCatatan($catatan, $jenisSampel, $itemKomoditi);
-                    if ($lokasiSampel === '-' && !empty($dataArr['lokasi_sampel']) && $dataArr['lokasi_sampel'] !== '-' && !preg_match('/^T\s*K\s*M\s*P/i', $dataArr['lokasi_sampel'])) {
+                    $isNarkotikaItem = preg_match('/narkotika|narkoba/i', (string)$itemKomoditi) || preg_match('/narkotika|narkoba/i', (string)$jenisSampel);
+                    $lokasiSampel = $isNarkotikaItem ? 'Kimia' : \App\Models\LokasiSampel::parseCatatan($catatan, $jenisSampel, $itemKomoditi);
+                    if (!$isNarkotikaItem && $lokasiSampel === '-' && !empty($dataArr['lokasi_sampel']) && $dataArr['lokasi_sampel'] !== '-' && !preg_match('/^T\s*K\s*M\s*P/i', $dataArr['lokasi_sampel'])) {
                         $lokasiSampel = \App\Models\LokasiSampel::parseCatatan($dataArr['lokasi_sampel'], $jenisSampel, $itemKomoditi);
                     }
-                    if ($lokasiSampel === '-' && !empty($dataArr['Lokasi Sampel']) && $dataArr['Lokasi Sampel'] !== '-' && !preg_match('/^T\s*K\s*M\s*P/i', $dataArr['Lokasi Sampel'])) {
+                    if (!$isNarkotikaItem && $lokasiSampel === '-' && !empty($dataArr['Lokasi Sampel']) && $dataArr['Lokasi Sampel'] !== '-' && !preg_match('/^T\s*K\s*M\s*P/i', $dataArr['Lokasi Sampel'])) {
                         $lokasiSampel = \App\Models\LokasiSampel::parseCatatan($dataArr['Lokasi Sampel'], $jenisSampel, $itemKomoditi);
                     }
 
@@ -442,7 +457,7 @@
                                 <li><strong>Tempat Sampling:</strong> {{ $tempatSampling }}</li>
                             @endif
                             @if(!empty($tanggalDiterima) && $tanggalDiterima !== '-')
-                                <li><strong>Tanggal Diterima Di TPS:</strong> {{ $tanggalDiterima }}</li>
+                                <li><strong>Tanggal Sampling:</strong> {{ $tanggalDiterima }}</li>
                             @endif
                             @if(!empty($pengirim) && $pengirim !== '-')
                                 <li><strong>Pengirim:</strong> {{ $pengirim }}</li>
@@ -490,8 +505,12 @@
                     <strong>(Petugas Penerima Sampel)</strong>
                 </div>
                 <div class="sign-space"></div>
-                <div class="sign-name">{{ $petugasPenerimaNama }}</div>
-                <div class="sign-nip">NIP. {{ $petugasPenerimaNip }}</div>
+                @if(!empty($petugasPenerimaNama) && $petugasPenerimaNama !== '-')
+                    <div class="sign-name">{{ $petugasPenerimaNama }}</div>
+                    @if(!empty($petugasPenerimaNip))
+                        <div class="sign-nip">NIP. {{ $petugasPenerimaNip }}</div>
+                    @endif
+                @endif
             </td>
             <td>
                 <div class="sign-title">
@@ -500,8 +519,12 @@
                     <strong>(Manager Administrasi)</strong>
                 </div>
                 <div class="sign-space"></div>
-                <div class="sign-name">{{ $managerAdministrasiNama }}</div>
-                <div class="sign-nip">NIP. {{ $managerAdministrasiNip }}</div>
+                @if(!empty($managerAdministrasiNama) && $managerAdministrasiNama !== '-')
+                    <div class="sign-name">{{ $managerAdministrasiNama }}</div>
+                    @if(!empty($managerAdministrasiNip))
+                        <div class="sign-nip">NIP. {{ $managerAdministrasiNip }}</div>
+                    @endif
+                @endif
             </td>
             <td>
                 <div class="sign-title">
@@ -510,8 +533,12 @@
                     <strong>(Kepala Balai)</strong>
                 </div>
                 <div class="sign-space"></div>
-                <div class="sign-name">{{ $kepalaBalaiNama }}</div>
-                <div class="sign-nip">NIP. {{ $nipKepalaBalai }}</div>
+                @if(!empty($kepalaBalaiNama) && $kepalaBalaiNama !== '-')
+                    <div class="sign-name">{{ $kepalaBalaiNama }}</div>
+                    @if(!empty($nipKepalaBalai))
+                        <div class="sign-nip">NIP. {{ $nipKepalaBalai }}</div>
+                    @endif
+                @endif
             </td>
         </tr>
     </table>
