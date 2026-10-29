@@ -110,6 +110,7 @@ class PengujianController extends Controller
 
                 $ignoredKeys = [
                     'no', 'no.', 'nomor',
+                    'identitas pengirim', 'identitas_pengirim',
                     'manager_administrasi', 'nip_manager_administrasi',
                     'kepala_balai', 'nip_kepala_balai',
                     'petugas_penerima', 'nip_petugas_penerima',
@@ -632,6 +633,7 @@ class PengujianController extends Controller
             if (is_array($item->data)) {
                 $ignoredKeys = [
                     'no', 'no.', 'nomor',
+                    'identitas pengirim', 'identitas_pengirim',
                     'manager_administrasi', 'nip_manager_administrasi',
                     'kepala_balai', 'nip_kepala_balai',
                     'petugas_penerima', 'nip_petugas_penerima',

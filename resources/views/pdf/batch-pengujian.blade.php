@@ -446,6 +446,7 @@
                     $tempatSampling = $dataArr['tempat_sampling'] ?? $dataArr['Tempat Sampling'] ?? '-';
                     $tanggalDiterima = $dataArr['tanggal_diterima'] ?? $dataArr['Tanggal Diterima'] ?? $dataArr['tanggal_sampling'] ?? $dataArr['Tanggal Sampling'] ?? '-';
                     $pengirim = $dataArr['pengirim'] ?? $dataArr['Pengirim'] ?? '-';
+                    $identitasPengirim = $dataArr['identitas_pengirim'] ?? $dataArr['Identitas Pengirim'] ?? '-';
                     $noSurat = $dataArr['no_surat'] ?? $dataArr['No Surat Petugas Sampling'] ?? $dataArr['no_surat_petugas_sampling'] ?? '-';
                     $noBilling = $dataArr['no_billing'] ?? $dataArr['No Billing'] ?? '-';
 
@@ -484,7 +485,7 @@
                         </ul>
                     </td>
                     <td>
-                        @if(!empty($keteranganSampling) && $keteranganSampling !== '-')
+                        @if(!empty($keteranganSampling) && $keteranganSampling !== '-' && !preg_match('/^Kemasan\s*:/i', trim($keteranganSampling)))
                             <div style="margin-bottom: 3px;">{{ $keteranganSampling }}</div>
                         @endif
                         <ul class="bullet-list">
@@ -492,10 +493,13 @@
                                 <li><strong>Tempat Sampling:</strong> {{ $tempatSampling }}</li>
                             @endif
                             @if(!empty($tanggalDiterima) && $tanggalDiterima !== '-')
-                                <li><strong>Tanggal Sampling:</strong> {{ $tanggalDiterima }}</li>
+                                <li><strong>{{ (!empty($pengirim) && $pengirim !== '-') ? 'Tanggal Diterima Di TPS' : 'Tanggal Sampling' }}:</strong> {{ $tanggalDiterima }}</li>
                             @endif
                             @if(!empty($pengirim) && $pengirim !== '-')
                                 <li><strong>Pengirim:</strong> {{ $pengirim }}</li>
+                            @endif
+                            @if(!empty($identitasPengirim) && $identitasPengirim !== '-')
+                                <li><strong>Identitas Pengirim:</strong> {{ $identitasPengirim }}</li>
                             @endif
                         </ul>
                     </td>

@@ -110,6 +110,7 @@ class ApiPengujianController extends Controller
 
                 $ignoredKeys = [
                     'no', 'no.', 'nomor',
+                    'identitas pengirim', 'identitas_pengirim',
                     'manager_administrasi', 'nip_manager_administrasi',
                     'kepala_balai', 'nip_kepala_balai',
                     'petugas_penerima', 'nip_petugas_penerima',
