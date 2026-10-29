@@ -172,7 +172,7 @@ class LokasiSampel extends Model
             } else {
                 $counts['T'] = $totalDefault ?: 1;
             }
-        } elseif ($totalDefault !== null && $totalDefault > 0) {
+        } elseif ($counts['T'] === 0 && $totalDefault !== null && $totalDefault > 0) {
             $counts['T'] = $totalDefault;
         }
 

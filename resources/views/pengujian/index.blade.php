@@ -456,6 +456,7 @@
                                 <!-- DYNAMIC DATA HEADERS FROM EXCEL -->
                                 @php
                                     $ignoredCols = [
+                                        'no', 'no.', 'nomor',
                                         'manager_administrasi', 'nip_manager_administrasi',
                                         'kepala_balai', 'nip_kepala_balai',
                                         'petugas_penerima', 'nip_petugas_penerima',
@@ -1150,6 +1151,7 @@
 
         // ─── 3. DYNAMIC BATCH & CATEGORY CONTROLLERS (NO FULL PAGE RELOAD) ───
         const IGNORED_COLS = [
+            'no', 'no.', 'nomor',
             'manager_administrasi', 'nip_manager_administrasi',
             'kepala_balai', 'nip_kepala_balai',
             'petugas_penerima', 'nip_petugas_penerima',

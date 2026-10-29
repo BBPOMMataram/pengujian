@@ -180,8 +180,9 @@ class PdfImportService
             $tanggalSpu = trim($tglM[1]);
         }
 
-        // Ekstraksi Dinamis 3 Pejabat Resmi SPU berdasarkan isi dokumen yang diunggah
-        // Jika di dokumen kosong, ikut kosongkan (null). Jika ada isi, ikuti isinya.
+        // Ekstraksi Dinamis Pejabat Penandatangan SPU sesuai dokumen asli yang diunggah
+        $signers = $this->extractSignersFromDocument($fullText, $pages, $tanggalSpu);
+
         $petugasPenerima = null;
         $nipPetugasPenerima = null;
         $managerAdministrasi = null;
@@ -189,7 +190,21 @@ class PdfImportService
         $kepalaBalai = null;
         $nipKepalaBalai = null;
 
-        if (preg_match_all('/([^\n]+)\s*\n\s*NIP\.\s*([0-9]{8,})/i', $fullText, $sigMatches, PREG_SET_ORDER)) {
+        if (!empty($signers)) {
+            $petugasPenerima = $signers[0]['name'] ?? null;
+            $nipPetugasPenerima = !empty($signers[0]['nip']) ? $signers[0]['nip'] : null;
+
+            foreach ($signers as $sigItem) {
+                $titlesJoined = implode(' ', $sigItem['titles'] ?? []);
+                if (stripos($titlesJoined, 'Manager Administrasi') !== false) {
+                    $managerAdministrasi = $sigItem['name'] ?? null;
+                    $nipManagerAdministrasi = !empty($sigItem['nip']) ? $sigItem['nip'] : null;
+                } elseif (stripos($titlesJoined, 'Kepala Balai') !== false || stripos($titlesJoined, 'Mengetahui') !== false) {
+                    $kepalaBalai = $sigItem['name'] ?? null;
+                    $nipKepalaBalai = !empty($sigItem['nip']) ? $sigItem['nip'] : null;
+                }
+            }
+        } elseif (preg_match_all('/([^\n]+)\s*\n\s*NIP\.\s*([0-9]{8,})/i', $fullText, $sigMatches, PREG_SET_ORDER)) {
             $filteredSigs = [];
             foreach ($sigMatches as $sm) {
                 $rawLine = trim($sm[1]);
@@ -519,6 +534,7 @@ class PdfImportService
                 'nip_manager_administrasi' => $nipManagerAdministrasi,
                 'kepala_balai' => $kepalaBalai,
                 'nip_kepala_balai' => $nipKepalaBalai,
+                'signers' => $signers,
             ];
 
             // Susun isi QR Code memuat Kode Sampel, Nama Produk, Jenis Sampel lengkap, NIE, dan Lokasi Sampel
@@ -563,6 +579,99 @@ class PdfImportService
         }
 
         return $records;
+    }
+
+    /**
+     * Extract exact signature blocks from SPU PDF pages (coordinates-first, text-fallback).
+     */
+    protected function extractSignersFromDocument(string $fullText, array $pages, ?string $defaultDate = null): array
+    {
+        try {
+            foreach ($pages as $page) {
+                $pt = $page->getText();
+                if (stripos($pt, 'Pemohon / Pengirim Sampel') === false && stripos($pt, 'Penerima Sampel') === false) {
+                    continue;
+                }
+
+                $tm = method_exists($page, 'getDataTm') ? $page->getDataTm() : [];
+                if (empty($tm)) {
+                    continue;
+                }
+
+                $anchors = [];
+                foreach ($tm as $idx => $entry) {
+                    $text = trim($entry[1] ?? '');
+                    if (preg_match('/^Tanggal,\s*(.+)$/i', $text, $m)) {
+                        $anchors[] = [
+                            'idx' => $idx,
+                            'x' => (float)($entry[0][4] ?? 0),
+                            'y' => (float)($entry[0][5] ?? 0),
+                            'date' => trim($m[1]),
+                            'titles' => [],
+                            'name' => null,
+                            'nip' => null,
+                        ];
+                    }
+                }
+
+                if (empty($anchors)) {
+                    continue;
+                }
+
+                foreach ($anchors as $aIdx => &$anchor) {
+                    $minY = $anchor['y'] - 160;
+                    foreach ($anchors as $otherIdx => $other) {
+                        if ($otherIdx !== $aIdx && abs($other['x'] - $anchor['x']) < 30 && $other['y'] < $anchor['y']) {
+                            $minY = max($minY, $other['y'] + 5);
+                        }
+                    }
+
+                    foreach ($tm as $idx => $entry) {
+                        if ($idx === $anchor['idx']) {
+                            continue;
+                        }
+                        $x = (float)($entry[0][4] ?? 0);
+                        $y = (float)($entry[0][5] ?? 0);
+                        $text = trim($entry[1] ?? '');
+                        if ($text === '') {
+                            continue;
+                        }
+
+                        if (abs($x - $anchor['x']) < 30 && $y < $anchor['y'] && $y >= $minY) {
+                            $dy = $anchor['y'] - $y;
+                            if ($dy < 45) {
+                                $anchor['titles'][] = $text;
+                            } else {
+                                if (preg_match('/^NIP\.?\s*(.*)$/i', $text, $nm)) {
+                                    $anchor['nip'] = trim($nm[1]);
+                                } else {
+                                    $anchor['name'] = $anchor['name'] ? ($anchor['name'] . ' ' . $text) : $text;
+                                }
+                            }
+                        }
+                    }
+                }
+                unset($anchor);
+
+                $result = [];
+                foreach ($anchors as $a) {
+                    $result[] = [
+                        'date' => $a['date'] ?: $defaultDate,
+                        'titles' => $a['titles'],
+                        'name' => $a['name'],
+                        'nip' => $a['nip'],
+                    ];
+                }
+
+                if (!empty($result)) {
+                    return $result;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback to regex below if coordinate extraction fails
+        }
+
+        return [];
     }
 
     /**
