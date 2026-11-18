@@ -29,10 +29,10 @@ Route::get('/item/{id}/pdf-fpdf', [PengujianController::class, 'pdfFpdf'])->name
 Route::get('/batch/{batchId}/pdf-all', [PengujianController::class, 'pdfBatch'])->name('pengujian.batch.pdf');
 Route::get('/file-group/{fileGroupId}/pdf-merged', [PengujianController::class, 'pdfMergedFileGroup'])->name('pengujian.filegroup.pdf');
 
-// Data Cleanup
-Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy');
-Route::post('/batch/{batchId}/delete', [PengujianController::class, 'destroyBatch'])->name('pengujian.batch.destroy.post');
-Route::post('/clear-all', [PengujianController::class, 'clearAll'])->name('pengujian.clear');
+// Data Cleanup (Khusus Superadmin)
+Route::delete('/batch/{batchId}', [PengujianController::class, 'destroyBatch'])->middleware('sso.auth:superadmin')->name('pengujian.batch.destroy');
+Route::post('/batch/{batchId}/delete', [PengujianController::class, 'destroyBatch'])->middleware('sso.auth:superadmin')->name('pengujian.batch.destroy.post');
+Route::post('/clear-all', [PengujianController::class, 'clearAll'])->middleware('sso.auth:superadmin')->name('pengujian.clear');
 
 
 // Diagnostic routes
