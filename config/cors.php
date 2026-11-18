@@ -1,32 +1,19 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    */
-
-    'paths' => ['api/*', 'sanctum/csrf-cookie', '*', 'upload', 'load-sample*', 'batch/*', 'clear-all'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    // Izinkan akses dari frontend Next.js (mendukung APP_URL_FRONTEND dari .env + domain produksi BBPOM)
+    'allowed_origins' => array_values(array_unique(array_filter([
+        env('APP_URL_FRONTEND', 'http://localhost:3000'),
         'https://bbpommataram.id',
         'https://www.bbpommataram.id',
         'http://localhost:3000',
-        'http://127.0.0.1:3000',
-    ],
+    ]))),
 
-    'allowed_origins_patterns' => [
-        '#^https://([a-z0-9-]+\.)?bbpommataram\.id$#',
-    ],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
@@ -34,6 +21,6 @@ return [
 
     'max_age' => 0,
 
+    // WAJIB TRUE agar cookie lintas port diperbolehkan masuk
     'supports_credentials' => true,
-
 ];

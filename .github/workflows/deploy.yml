@@ -69,10 +69,12 @@ jobs:
             if [ -d "$ALT_DIR" ]; then
               echo "[Deploy] Syncing code to $ALT_DIR..."
               cp -r "$APP_DIR/app" "$ALT_DIR/"
+              cp -r "$APP_DIR/config" "$ALT_DIR/"
               cp -r "$APP_DIR/routes" "$ALT_DIR/"
               cp -r "$APP_DIR/resources" "$ALT_DIR/"
               cp -r "$APP_DIR/bootstrap" "$ALT_DIR/"
               cp -r "$APP_DIR/public" "$ALT_DIR/"
+              cp -r "$APP_DIR/database/migrations" "$ALT_DIR/database/" 2>/dev/null || true
               if [ -f "$ALT_DIR/artisan" ]; then
                 (cd "$ALT_DIR" && php artisan optimize:clear)
               fi
