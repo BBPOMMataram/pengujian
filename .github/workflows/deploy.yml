@@ -21,16 +21,20 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           debug: true
           script: |
-            echo "[Deploy] Fetch latest code..."
-            APP_DIR="/home/bbpommataram.id/pengujian"
+            set -e
+
+            APP_DIR="/home/bbpommataram.id/pengujian.bbpommataram.id"
+            ALT_DIR="/home/bbpommataram.id/PENGUJIAN"
+
+            echo "[Deploy] Fetch latest code in $APP_DIR..."
             cd "$APP_DIR" || exit 1
+            git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
             git fetch --all
             git reset --hard "origin/${{ github.ref_name }}"
 
             echo "[Deploy] Install dependencies..."
-            composer install --no-dev --prefer-dist --no-interaction --no-ansi
-            # npm ci
-            # npm run build
+            export COMPOSER_ALLOW_SUPERUSER=1
+            composer install --no-dev --prefer-dist --no-interaction --no-ansi --optimize-autoloader
 
             echo "[Deploy] Run migrations..."
             php artisan migrate --force
@@ -39,7 +43,7 @@ jobs:
             php artisan optimize:clear
 
             echo "[Deploy] Fix permissions..."
-            chown -R bbpom9725:bbpom9725 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+            chown -R bbpom9725:bbpom9725 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database"
 
             # Folder = 755 (drwxr-xr-x)
             find "$APP_DIR/storage" -type d -exec chmod 755 {} \;
@@ -49,9 +53,31 @@ jobs:
             find "$APP_DIR/storage" -type f -exec chmod 644 {} \;
             find "$APP_DIR/bootstrap/cache" -type f -exec chmod 644 {} \;
 
-            # Khusus laravel.log pastikan bisa ditulis
+            # Khusus laravel.log & SQLite database pastikan bisa ditulis
             touch "$APP_DIR/storage/logs/laravel.log"
             chown bbpom9725:bbpom9725 "$APP_DIR/storage/logs/laravel.log"
             chmod 644 "$APP_DIR/storage/logs/laravel.log"
+
+            if [ -f "$APP_DIR/database/database.sqlite" ]; then
+              chown bbpom9725:bbpom9725 "$APP_DIR/database/database.sqlite"
+              chmod 664 "$APP_DIR/database/database.sqlite"
+            fi
+
+            touch "$APP_DIR/public/index.php" 2>/dev/null || true
+
+            # Sinkronkan juga ke /home/bbpommataram.id/PENGUJIAN jika direktori tersebut ada di server
+            if [ -d "$ALT_DIR" ]; then
+              echo "[Deploy] Syncing code to $ALT_DIR..."
+              cp -r "$APP_DIR/app" "$ALT_DIR/"
+              cp -r "$APP_DIR/routes" "$ALT_DIR/"
+              cp -r "$APP_DIR/resources" "$ALT_DIR/"
+              cp -r "$APP_DIR/bootstrap" "$ALT_DIR/"
+              cp -r "$APP_DIR/public" "$ALT_DIR/"
+              if [ -f "$ALT_DIR/artisan" ]; then
+                (cd "$ALT_DIR" && php artisan optimize:clear)
+              fi
+              chown -R bbpom9725:bbpom9725 "$ALT_DIR/storage" "$ALT_DIR/bootstrap/cache" "$ALT_DIR/database" 2>/dev/null || true
+              touch "$ALT_DIR/public/index.php" 2>/dev/null || true
+            fi
 
             echo "[Deploy] Done ✅"
