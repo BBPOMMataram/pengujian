@@ -135,7 +135,7 @@ class ApiPengujianController extends Controller
         // Find sibling sheets if this file had multiple tabs
         $siblingSheets = collect();
         if ($currentBatch && $currentBatch->file_group_id) {
-            $siblingSheets = $batches->where('file_group_id', $currentBatch->file_group_id);
+            $siblingSheets = $batches->where('file_group_id', $currentBatch->file_group_id)->values();
         }
 
         $totalOverall = 0;

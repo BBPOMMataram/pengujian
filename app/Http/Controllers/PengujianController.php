@@ -537,6 +537,7 @@ class PengujianController extends Controller
         return response($svg, 200, [
             'Content-Type' => 'image/svg+xml',
             'Cache-Control' => 'public, max-age=86400',
+            'Access-Control-Allow-Origin' => '*',
         ]);
     }
 
