@@ -1,27 +1,12 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    */
-
-    'paths' => ['api/*', 'sanctum/csrf-cookie', '*', 'upload', 'load-sample*', 'batch/*', 'clear-all'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        '*',
-    ],
+    // Izinkan akses dari frontend Next.js Anda
+    'allowed_origins' => [env('APP_URL_FRONTEND', 'http://localhost:3000')],
 
     'allowed_origins_patterns' => [],
 
@@ -31,6 +16,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
-
+    // WAJIB TRUE agar cookie lintas port diperbolehkan masuk
+    'supports_credentials' => true,
 ];

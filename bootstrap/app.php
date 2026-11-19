@@ -12,8 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->encryptCookies(except: ['access_token']);
+        $middleware->alias([
+            'sso.auth' => \App\Http\Middleware\VerifyAuthBpomSso::class,
+        ]);
         $middleware->validateCsrfTokens(except: [
             'api/*',
+            'item/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

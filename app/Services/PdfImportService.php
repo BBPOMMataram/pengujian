@@ -155,6 +155,16 @@ class PdfImportService
             $spuNo = trim($spuM[1]);
         }
 
+        $docNamaUnit = null;
+        if (preg_match('/Nama Unit\s*:\s*([^\n]+)/i', $fullText, $unitM)) {
+            $docNamaUnit = trim($unitM[1]);
+        }
+
+        $docKomoditi = null;
+        if (preg_match('/Komoditi\s*:\s*([^\n]+)/i', $fullText, $komM)) {
+            $docKomoditi = trim($komM[1]);
+        }
+
         $docAnggaran = null;
         if (preg_match('/Anggaran\s*:\s*([^\n]+)/i', $fullText, $angM)) {
             $docAnggaran = trim($angM[1]);
@@ -170,33 +180,67 @@ class PdfImportService
             $tanggalSpu = trim($tglM[1]);
         }
 
-        // Default & Ekstraksi 3 Pejabat Resmi SPU
-        // 1. Pemohon / Pengirim Sampel (Petugas Penerima Sampel)
-        // 2. Penerima Sampel (Manager Administrasi)
-        // 3. Mengetahui (Kepala Balai)
-        $petugasPenerima = 'Nirmala Nurhasanah, STP';
-        $nipPetugasPenerima = '199205172023212054';
-        $managerAdministrasi = 'Basuki Murdi Hartono, SH.';
-        $nipManagerAdministrasi = '197904052005011002';
-        $kepalaBalai = 'Yogi Abaso Mataram, S.Si., Apt';
-        $nipKepalaBalai = '198101242009121002';
+        // Ekstraksi Dinamis Pejabat Penandatangan SPU sesuai dokumen asli yang diunggah
+        $signers = $this->extractSignersFromDocument($fullText, $pages, $tanggalSpu);
 
-        if (preg_match('/(Nirmala Nurhasanah[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $pm)) {
-            $petugasPenerima = trim($pm[1]);
-            $nipPetugasPenerima = trim($pm[2]);
-        }
-        if (preg_match('/(Basuki Murdi Hartono[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $bm)) {
-            $managerAdministrasi = trim($bm[1]);
-            $nipManagerAdministrasi = trim($bm[2]);
-        }
-        if (preg_match('/(Yogi Abaso Mataram[^\n]*)\s*\n\s*NIP\.\s*([0-9]+)/i', $fullText, $ym)) {
-            $kepalaBalai = trim($ym[1]);
-            $nipKepalaBalai = trim($ym[2]);
+        $petugasPenerima = null;
+        $nipPetugasPenerima = null;
+        $managerAdministrasi = null;
+        $nipManagerAdministrasi = null;
+        $kepalaBalai = null;
+        $nipKepalaBalai = null;
+
+        if (!empty($signers)) {
+            $petugasPenerima = $signers[0]['name'] ?? null;
+            $nipPetugasPenerima = !empty($signers[0]['nip']) ? $signers[0]['nip'] : null;
+
+            foreach ($signers as $sigItem) {
+                $titlesJoined = implode(' ', $sigItem['titles'] ?? []);
+                if (stripos($titlesJoined, 'Manager Administrasi') !== false) {
+                    $managerAdministrasi = $sigItem['name'] ?? null;
+                    $nipManagerAdministrasi = !empty($sigItem['nip']) ? $sigItem['nip'] : null;
+                } elseif (stripos($titlesJoined, 'Kepala Balai') !== false || stripos($titlesJoined, 'Mengetahui') !== false) {
+                    $kepalaBalai = $sigItem['name'] ?? null;
+                    $nipKepalaBalai = !empty($sigItem['nip']) ? $sigItem['nip'] : null;
+                }
+            }
+        } elseif (preg_match_all('/([^\n]+)\s*\n\s*NIP\.\s*([0-9]{8,})/i', $fullText, $sigMatches, PREG_SET_ORDER)) {
+            $filteredSigs = [];
+            foreach ($sigMatches as $sm) {
+                $rawLine = trim($sm[1]);
+                $nip = trim($sm[2]);
+                $parts = preg_split('/\t+/', $rawLine);
+                $candidate = trim($parts[0]);
+                $candidate = preg_replace('/^(?:Diterima Oleh|MT Pengujian|Penerima|Pemohon)\s*/i', '', $candidate);
+                $candidate = trim($candidate);
+
+                if (!empty($candidate) && !preg_match('/^(?:Tanggal|Pemohon|Penerima|Mengetahui|Kode Sampel|Jumlah)/i', $candidate)) {
+                    $filteredSigs[] = ['name' => $candidate, 'nip' => $nip];
+                }
+            }
+
+            if (count($filteredSigs) === 1) {
+                $petugasPenerima = $filteredSigs[0]['name'];
+                $nipPetugasPenerima = $filteredSigs[0]['nip'];
+            } elseif (count($filteredSigs) >= 3) {
+                $petugasPenerima = $filteredSigs[0]['name'];
+                $nipPetugasPenerima = $filteredSigs[0]['nip'];
+                $managerAdministrasi = $filteredSigs[1]['name'];
+                $nipManagerAdministrasi = $filteredSigs[1]['nip'];
+                $kepalaBalai = $filteredSigs[2]['name'];
+                $nipKepalaBalai = $filteredSigs[2]['nip'];
+            } elseif (count($filteredSigs) === 2) {
+                $petugasPenerima = $filteredSigs[0]['name'];
+                $nipPetugasPenerima = $filteredSigs[0]['nip'];
+                $managerAdministrasi = $filteredSigs[1]['name'];
+                $nipManagerAdministrasi = $filteredSigs[1]['nip'];
+            }
         }
 
         // 1. Ekstraksi dari Tabel Halaman 1 (Tabel Surat Permintaan Uji)
         // Pola fleksibel mendukung '1 Kode Sampel:' maupun '1Kode Sampel:'
         $spuPattern = '/(?:^|\n)\s*(\d+)\s*Kode Sampel[:\s]*\n?([0-9A-Za-z\.\-\/]+)(.*?)(?=(?:\n\s*\d+\s*Kode Sampel[:\s]*)|\nKeterangan Jumlah Sampel|\nDAFTAR LAMPIRAN SAMPEL|$)/s';
+        $extraIdentityBlocks = [];
         
         if (preg_match_all($spuPattern, $fullText, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $m) {
@@ -209,23 +253,33 @@ class PdfImportService
                     continue;
                 }
 
+                // Jika dalam satu blok terdapat lebih dari 1 'Nama Produk:' (akibat urutan stream PDF 2 baris di 1 halaman),
+                // pisahkan blok identitas kedua dst untuk dipasangkan ke baris yang kehilangan blok identitas
+                $identitySource = $body;
+                if (preg_match_all('/(?:-\s*)?•\s*Nama Produk[:\s].*?(?=(?:-\s*)?•\s*Nama Produk[:\s]|\nNo\.\s*Kode Sampel|$)/is', $body, $idBlocks) && count($idBlocks[0]) > 1) {
+                    $identitySource = $idBlocks[0][0];
+                    for ($bi = 1; $bi < count($idBlocks[0]); $bi++) {
+                        $extraIdentityBlocks[] = $idBlocks[0][$bi];
+                    }
+                }
+
                 $namaProduk = '';
-                if (preg_match('/Nama Produk[:\s]*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $body, $pn)) {
+                if (preg_match('/Nama Produk[:\s]*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $identitySource, $pn)) {
                     $rawNama = trim($pn[1]);
-                    $rawNama = preg_split('/(•|\bNIE\b|\bMerk\b|\bNarkotika\b|\bKomposisi\b|\bED\b|\bBets\b|\bPabrik\b)/i', $rawNama)[0];
+                    $rawNama = preg_split('/(•|\b(?:NIE|Merk|Komposisi|ED|Bets|Pabrik|Provinsi|Evaluasi|Kemasan|Kondisi|Rapid)\s*:)/i', $rawNama)[0];
                     $namaProduk = preg_replace('/\s+/', ' ', trim($rawNama));
                 }
 
                 // Ekstraksi NIE (Nomor Izin Edar) - jika kosong/strip fallback '-'
                 $nie = '-';
-                if (preg_match('/•\s*NIE\s*:\s*([^•\n]*)/i', $body, $niem)) {
+                if (preg_match('/•\s*NIE\s*:\s*([^•\n]*)/i', $identitySource, $niem)) {
                     $rawNie = trim($niem[1]);
                     $nie = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
                 }
 
                 // Ekstraksi Merk
                 $merk = '-';
-                if (preg_match('/•\s*Merk\s*:\s*([^•\n]*)/i', $body, $merkm)) {
+                if (preg_match('/•\s*Merk\s*:\s*([^•\n]*)/i', $identitySource, $merkm)) {
                     $rawMerk = trim($merkm[1]);
                     $merk = ($rawMerk !== '' && $rawMerk !== '-') ? $rawMerk : '-';
                 }
@@ -233,9 +287,9 @@ class PdfImportService
                 // Ekstraksi Jenis Sampel (bullet point persis setelah '• Merk:')
                 // Contoh: 'Obat Traditional (OT) - Rutin' atau 'Narkotika - Pihak Ke 3 - Kepolisian'
                 $jenisSampel = '';
-                if (preg_match('/•\s*Merk\s*:[^\n]*\n\s*•\s*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $body, $jm)) {
+                if (preg_match('/•\s*Merk\s*:[^\n]*\n\s*•\s*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $identitySource, $jm)) {
                     $rawJ = trim($jm[1]);
-                    $rawJ = preg_split('/(•|\bKomposisi\b|\bED\b|\bBets\b|\bPabrik\b|\bProvinsi\b)/i', $rawJ)[0];
+                    $rawJ = preg_split('/(•|\b(?:Komposisi|ED|Bets|Pabrik|Provinsi)\s*:)/i', $rawJ)[0];
                     $jenisSampel = preg_replace('/\s+/', ' ', trim($rawJ));
                 }
 
@@ -261,19 +315,22 @@ class PdfImportService
                         }
                     }
                 }
-                $komoditi = $this->mapKomoditi($jenisSampel);
-                $lokasiSampel = $this->parseLokasiSampel($catatan, $jenisSampel, $komoditi);
+                $komoditi = $this->mapKomoditi($jenisSampel ?: $docKomoditi);
+                $lokasiSampel = $this->parseLokasiSampel($catatan, $jenisSampel ?: $docKomoditi, $komoditi);
 
                 $keteranganSampling = '';
-                if (preg_match('/(Plastik|Kardus|Botol|Aluminium|Kemasan|Amplop|Klip)[^•\n]+(?:\n[ \t]*[^•\n]+)*/i', $body, $sm)) {
+                if (preg_match('/(?:•\s*)?Kemasan[:\s]*(.+?)(?=\s*(?:•|\bKondisi Sampel\b|\bRapid Test\b|$))/is', $identitySource, $km)) {
+                    $keteranganSampling = 'Kemasan : ' . preg_replace('/\s+/', ' ', trim($km[1]));
+                } elseif (preg_match('/(Plastik|Kardus|Botol|Aluminium|Kemasan|Amplop|Klip)[^•\n]+(?:\n[ \t]*[^•\n]+)*/i', $body, $sm)) {
                     $rawSm = trim($sm[0]);
                     $rawSm = preg_split('/(•|\bTempat\b|\bTanggal\b|\bPengirim\b|\bKondisi\b|\bRapid\b)/i', $rawSm)[0];
                     $keteranganSampling = preg_replace('/\s+/', ' ', trim($rawSm));
                 }
 
                 $tempatSampling = '';
-                if (preg_match('/Tempat Sampling[:\s]*([^•\n]+)/i', $body, $ts)) {
-                    $tempatSampling = preg_replace('/\s+/', ' ', trim($ts[1]));
+                if (preg_match('/(?:•\s*)?Tempat Sampling[:\s]*(.*?)(?=(?:\n\s*(?:•\s*)?(?:Tanggal|Pengirim|Identitas Pengirim|Jumlah|No\.?\s*Surat|Total Pembayaran|No\.?\s*Billing|SPB|NTPN|Keterangan Jumlah|No\.\s*Kode Sampel)|\n\s*\d+\s*-\s*-|$))/is', $body, $ts)) {
+                    $cleanTs = preg_replace('/^\s*•\s*/u', '', trim($ts[1]));
+                    $tempatSampling = preg_replace('/\s+/', ' ', trim($cleanTs));
                 }
 
                 $tanggalDiterima = '';
@@ -282,10 +339,16 @@ class PdfImportService
                 }
 
                 $pengirim = '';
-                if (preg_match('/Pengirim[:\s]*([^•\n]+)/i', $body, $pg)) {
+                if (preg_match('/(?:•\s*)?Pengirim[:\s]*(.*?)(?=(?:\n\s*(?:•\s*)?(?:Identitas Pengirim|Tanggal|Tempat|No\.?\s*Surat|Total Pembayaran|No\.?\s*Billing|SPB|NTPN|Jumlah)|\n\s*\d+\s*-\s*-|$))/is', $body, $pg)) {
                     $rawPg = trim($pg[1]);
-                    $rawPg = preg_split('/(•|\bIdentitas\b|\bNo Surat\b)/i', $rawPg)[0];
+                    $rawPg = preg_split('/(•|\bIdentitas Pengirim\b|\bNo\.?\s*Surat\b)/i', $rawPg)[0];
                     $pengirim = preg_replace('/\s+/', ' ', trim($rawPg));
+                }
+
+                $identitasPengirim = '';
+                if (preg_match('/(?:•\s*)?Identitas Pengirim[:\s]*([^\n•]+)/i', $body, $ipg)) {
+                    $rawIpg = preg_replace('/\s+\d+\s*-\s*-.*$/', '', trim($ipg[1]));
+                    $identitasPengirim = preg_replace('/\s+/', ' ', trim($rawIpg));
                 }
 
                 $noSurat = '';
@@ -299,8 +362,9 @@ class PdfImportService
                 }
 
                 $komposisi = '';
-                if (preg_match('/•\s*Komposisi[:\s]*([^•\n]+)/i', $body, $kpm)) {
-                    $komposisi = trim($kpm[1]);
+                if (preg_match('/•\s*Komposisi[:\s]*(.+?)(?=\s*•|$)/is', $identitySource, $kpm)) {
+                    $rawKpm = trim($kpm[1]);
+                    $komposisi = preg_replace('/\s+/', ' ', $rawKpm);
                 }
 
                 $samples[$code] = [
@@ -310,17 +374,52 @@ class PdfImportService
                     'nie' => $nie,
                     'merk' => $merk,
                     'jenis_sampel' => $jenisSampel,
-                    'komoditi' => $this->mapKomoditi($jenisSampel),
+                    'komoditi' => $komoditi,
                     'lokasi_sampel' => $lokasiSampel,
                     'catatan' => $catatan ?: '-',
                     'keterangan_sampling' => $keteranganSampling,
                     'tempat_sampling' => $tempatSampling,
                     'tanggal_diterima' => $tanggalDiterima,
                     'pengirim' => $pengirim,
+                    'identitas_pengirim' => $identitasPengirim,
                     'no_surat' => $noSurat,
                     'no_billing' => $noBilling,
                     'komposisi' => $komposisi,
                 ];
+            }
+
+            // Pasangkan blok identitas ekstra ke sampel yang belum memiliki nama_produk
+            if (!empty($extraIdentityBlocks)) {
+                foreach ($samples as $cKey => &$sVal) {
+                    if (empty($sVal['nama_produk']) && !empty($extraIdentityBlocks)) {
+                        $extraBlock = array_shift($extraIdentityBlocks);
+                        if (preg_match('/Nama Produk[:\s]*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $extraBlock, $pn)) {
+                            $rawNama = preg_split('/(•|\b(?:NIE|Merk|Komposisi|ED|Bets|Pabrik|Provinsi|Evaluasi|Kemasan|Kondisi|Rapid)\s*:)/i', trim($pn[1]))[0];
+                            $sVal['nama_produk'] = preg_replace('/\s+/', ' ', trim($rawNama));
+                        }
+                        if (preg_match('/•\s*NIE\s*:\s*([^•\n]*)/i', $extraBlock, $niem)) {
+                            $rawNie = trim($niem[1]);
+                            $sVal['nie'] = ($rawNie !== '' && $rawNie !== '-') ? $rawNie : '-';
+                        }
+                        if (preg_match('/•\s*Merk\s*:\s*([^•\n]*)/i', $extraBlock, $merkm)) {
+                            $rawMerk = trim($merkm[1]);
+                            $sVal['merk'] = ($rawMerk !== '' && $rawMerk !== '-') ? $rawMerk : '-';
+                        }
+                        if (preg_match('/•\s*Merk\s*:[^\n]*\n\s*•\s*([^•\n]+(?:\n[ \t]*[^•\n]+)*)/i', $extraBlock, $jm)) {
+                            $rawJ = preg_split('/(•|\b(?:Komposisi|ED|Bets|Pabrik|Provinsi)\s*:)/i', trim($jm[1]))[0];
+                            $sVal['jenis_sampel'] = preg_replace('/\s+/', ' ', trim($rawJ));
+                            $sVal['komoditi'] = $this->mapKomoditi($sVal['jenis_sampel']);
+                            $sVal['lokasi_sampel'] = $this->parseLokasiSampel($sVal['catatan'], $sVal['jenis_sampel'], $sVal['komoditi']);
+                        }
+                        if (preg_match('/(?:•\s*)?Kemasan[:\s]*(.+?)(?=\s*(?:•|\bKondisi Sampel\b|\bRapid Test\b|$))/is', $extraBlock, $km)) {
+                            $sVal['keterangan_sampling'] = 'Kemasan : ' . preg_replace('/\s+/', ' ', trim($km[1]));
+                        }
+                        if (preg_match('/•\s*Komposisi[:\s]*(.+?)(?=\s*•|$)/is', $extraBlock, $kpm)) {
+                            $sVal['komposisi'] = preg_replace('/\s+/', ' ', trim($kpm[1]));
+                        }
+                    }
+                }
+                unset($sVal);
             }
         }
 
@@ -355,7 +454,7 @@ class PdfImportService
                 }
 
                 $namaSampel = '';
-                if (preg_match('/Nama Sampel\s+([^\n]+(?:\n[^\n]+)?)/i', $block, $nsm)) {
+                if (preg_match('/Nama Sampel\s+(.*?)(?=\n\s*Pabrik\b|$)/is', $block, $nsm)) {
                     $rawNama = trim(explode('Pabrik', $nsm[1])[0]);
                     $namaSampel = preg_replace('/\s+/', ' ', $rawNama);
                 }
@@ -435,7 +534,9 @@ class PdfImportService
                 'NIE' => (!empty($data['nie']) && $data['nie'] !== '') ? $data['nie'] : '-',
                 'Jenis Sampel' => !empty($data['jenis_sampel']) ? $data['jenis_sampel'] : (!empty($data['komoditi']) ? $data['komoditi'] : '-'),
                 'Komoditi' => $data['komoditi'] ?? 'Narkotika',
-                'Lokasi Sampel' => (!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '') ? $data['lokasi_sampel'] : '-',
+                'Lokasi Sampel' => (isset($data['komoditi']) && preg_match('/narkotika|narkoba/i', $data['komoditi']))
+                    ? 'Kimia'
+                    : ((!empty($data['lokasi_sampel']) && $data['lokasi_sampel'] !== '') ? $data['lokasi_sampel'] : '-'),
             ];
 
             if (!empty($data['merk']) && $data['merk'] !== '-') {
@@ -456,6 +557,9 @@ class PdfImportService
             if (!empty($data['pengirim'])) {
                 $mappedData['Pengirim'] = $data['pengirim'];
             }
+            if (!empty($data['identitas_pengirim'])) {
+                $mappedData['Identitas Pengirim'] = $data['identitas_pengirim'];
+            }
             if (!empty($data['tanggal_diterima'])) {
                 $mappedData['Tanggal Diterima'] = $data['tanggal_diterima'];
             }
@@ -475,6 +579,8 @@ class PdfImportService
             // SPU Document Metadata & Pejabat Penandatangan Resmi BBPOM (Disimpan di _meta agar tidak mencemari tabel)
             $mappedData['_meta'] = [
                 'no_spu' => $spuNo,
+                'nama_unit' => $docNamaUnit,
+                'komoditi' => $docKomoditi ?: ($data['komoditi'] ?? null),
                 'anggaran' => $docAnggaran,
                 'asal_sampling' => $docAsalSampling,
                 'tanggal_spu' => $tanggalSpu,
@@ -484,6 +590,7 @@ class PdfImportService
                 'nip_manager_administrasi' => $nipManagerAdministrasi,
                 'kepala_balai' => $kepalaBalai,
                 'nip_kepala_balai' => $nipKepalaBalai,
+                'signers' => $signers,
             ];
 
             // Susun isi QR Code memuat Kode Sampel, Nama Produk, Jenis Sampel lengkap, NIE, dan Lokasi Sampel
@@ -528,6 +635,99 @@ class PdfImportService
         }
 
         return $records;
+    }
+
+    /**
+     * Extract exact signature blocks from SPU PDF pages (coordinates-first, text-fallback).
+     */
+    protected function extractSignersFromDocument(string $fullText, array $pages, ?string $defaultDate = null): array
+    {
+        try {
+            foreach ($pages as $page) {
+                $pt = $page->getText();
+                if (stripos($pt, 'Pemohon / Pengirim Sampel') === false && stripos($pt, 'Penerima Sampel') === false) {
+                    continue;
+                }
+
+                $tm = method_exists($page, 'getDataTm') ? $page->getDataTm() : [];
+                if (empty($tm)) {
+                    continue;
+                }
+
+                $anchors = [];
+                foreach ($tm as $idx => $entry) {
+                    $text = trim($entry[1] ?? '');
+                    if (preg_match('/^Tanggal,\s*(.+)$/i', $text, $m)) {
+                        $anchors[] = [
+                            'idx' => $idx,
+                            'x' => (float)($entry[0][4] ?? 0),
+                            'y' => (float)($entry[0][5] ?? 0),
+                            'date' => trim($m[1]),
+                            'titles' => [],
+                            'name' => null,
+                            'nip' => null,
+                        ];
+                    }
+                }
+
+                if (empty($anchors)) {
+                    continue;
+                }
+
+                foreach ($anchors as $aIdx => &$anchor) {
+                    $minY = $anchor['y'] - 160;
+                    foreach ($anchors as $otherIdx => $other) {
+                        if ($otherIdx !== $aIdx && abs($other['x'] - $anchor['x']) < 30 && $other['y'] < $anchor['y']) {
+                            $minY = max($minY, $other['y'] + 5);
+                        }
+                    }
+
+                    foreach ($tm as $idx => $entry) {
+                        if ($idx === $anchor['idx']) {
+                            continue;
+                        }
+                        $x = (float)($entry[0][4] ?? 0);
+                        $y = (float)($entry[0][5] ?? 0);
+                        $text = trim($entry[1] ?? '');
+                        if ($text === '') {
+                            continue;
+                        }
+
+                        if (abs($x - $anchor['x']) < 30 && $y < $anchor['y'] && $y >= $minY) {
+                            $dy = $anchor['y'] - $y;
+                            if ($dy < 45) {
+                                $anchor['titles'][] = $text;
+                            } else {
+                                if (preg_match('/^NIP\.?\s*(.*)$/i', $text, $nm)) {
+                                    $anchor['nip'] = trim($nm[1]);
+                                } else {
+                                    $anchor['name'] = $anchor['name'] ? ($anchor['name'] . ' ' . $text) : $text;
+                                }
+                            }
+                        }
+                    }
+                }
+                unset($anchor);
+
+                $result = [];
+                foreach ($anchors as $a) {
+                    $result[] = [
+                        'date' => $a['date'] ?: $defaultDate,
+                        'titles' => $a['titles'],
+                        'name' => $a['name'],
+                        'nip' => $a['nip'],
+                    ];
+                }
+
+                if (!empty($result)) {
+                    return $result;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback to regex below if coordinate extraction fails
+        }
+
+        return [];
     }
 
     /**

@@ -102,7 +102,7 @@ class PengujianTest extends TestCase
 
     public function test_pdf_view_renders_spu_berita_acara_and_omits_qr_code()
     {
-        $this->post('/load-sample');
+        $this->post('/load-sample-pdf');
         $item = PengujianItem::first();
 
         // Render blade view directly to inspect HTML content before PDF conversion
@@ -112,7 +112,7 @@ class PengujianTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('SURAT PERMINTAAN UJI', $singleHtml);
-        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $singleHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0044', $singleHtml);
         $this->assertStringContainsString('Komoditi', $singleHtml);
         $this->assertStringContainsString('Anggaran', $singleHtml);
         $this->assertStringContainsString('Asal Sampling', $singleHtml);
@@ -130,7 +130,7 @@ class PengujianTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('SURAT PERMINTAAN UJI', $batchHtml);
-        $this->assertStringContainsString('SPU.117.05.26.10.16.0036', $batchHtml);
+        $this->assertStringContainsString('SPU.117.05.26.10.16.0044', $batchHtml);
         $this->assertStringNotContainsString('<th class="col-qr"', $batchHtml);
         $this->assertStringNotContainsString('QR Code', $batchHtml);
     }
@@ -139,9 +139,13 @@ class PengujianTest extends TestCase
     {
         $service = new \App\Services\PdfImportService();
 
-        // 1. Test parsing K1 M0 R1 to Lokasi Sampel (0 is omitted)
-        $lokasi1 = $service->parseLokasiSampel('K1 M0 R1', 'Narkotika');
-        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $lokasi1);
+        // 1. Kategori Narkotika selalu dipastikan masuk ke Kimia meskipun ada catatan
+        $lokasiNarkotika = $service->parseLokasiSampel('K1 M0 R1', 'Narkotika');
+        $this->assertEquals('Kimia', $lokasiNarkotika);
+
+        // Untuk non-narkotika (misal Obat/Kosmetik), catatan K/M/R didekode sesuai isinya (0 diabaikan)
+        $lokasiNonNarkotika = $service->parseLokasiSampel('K1 M0 R1', 'Obat');
+        $this->assertEquals('Kimia 1 Sampel dan Retensi 1 Sampel', $lokasiNonNarkotika);
 
         $lokasi2 = $service->parseLokasiSampel('K2 M1 R0', 'Obat Tradisional');
         $this->assertEquals('Kimia 2 Sampel dan Mikro 1 Sampel', $lokasi2);
@@ -263,8 +267,18 @@ class PengujianTest extends TestCase
         $this->assertEquals('2', $counts['M']);
         $this->assertEquals('1', $counts['A']);
 
-        // Update item data dengan catatan baru untuk memverifikasi rendering view PDF
+        // Uji bahwa kategori Narkotika selalu dipastikan masuk ke Kimia meskipun memiliki catatan K/M/A
+        $narkotikaLokasi = \App\Models\LokasiSampel::parseCatatan('K2, M0, A1', 'Narkotika - Kepolisian', 'Narkotika');
+        $this->assertEquals('Kimia', $narkotikaLokasi);
+
+        // Uji catatan untuk non-narkotika seperti Surabaya tetap sesuai isi catatannya
+        $surabayaLokasi = \App\Models\LokasiSampel::parseCatatan('Surabaya K80, A20', 'Obat', 'Obat');
+        $this->assertEquals('Kimia 80 Sampel dan Arsip 20 Sampel', $surabayaLokasi);
+
+        // Update item data dengan catatan baru dan komoditi Kosmetika untuk memverifikasi rendering view PDF
         $itemData = $item->data;
+        $itemData['Komoditi'] = 'Kosmetika';
+        $itemData['Jenis Sampel'] = 'Kosmetika';
         $itemData['Catatan'] = $sampleCatatan;
         $item->data = $itemData;
         $item->save();
@@ -297,5 +311,94 @@ class PengujianTest extends TestCase
         // Verify that internal metadata fields do not appear as table headers
         $this->assertStringNotContainsString('<th>manager_administrasi</th>', $html);
         $this->assertStringNotContainsString('<th>kepala_balai</th>', $html);
+    }
+
+    public function test_multiple_files_upload_creates_batches_and_items()
+    {
+        $csvContent1 = "Kode Sampel,Nama Produk\nSMP-A01,Produk A1\nSMP-A02,Produk A2\n";
+        $csvContent2 = "Kode Sampel,Nama Produk\nSMP-B01,Produk B1\n";
+
+        $file1 = \Illuminate\Http\UploadedFile::fake()->createWithContent('file1.csv', $csvContent1);
+        $file2 = \Illuminate\Http\UploadedFile::fake()->createWithContent('file2.csv', $csvContent2);
+
+        $response = $this->postJson('/api/pengujian/upload', [
+            'files' => [$file1, $file2],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'file_count' => 2,
+            'count' => 3,
+        ]);
+
+        $this->assertEquals(3, PengujianItem::whereIn('filename', ['file1.csv', 'file2.csv'])->count());
+    }
+
+    public function test_spu_pdf_four_signatories_and_identitas_sample_fields()
+    {
+        $item = PengujianItem::create([
+            'batch_id' => 'BATCH-KOS-01',
+            'file_group_id' => 'BATCH-KOS-01',
+            'filename' => 'spu-SPU.117.01.26.10.12.0002 kos.pdf',
+            'sheet_name' => 'Dokumen SPU',
+            'row_number' => 1,
+            'qr_token' => \Illuminate\Support\Str::random(32),
+            'qr_content' => 'Kode Sampel: 26.117.201.12.01.0343',
+            'data' => [
+                'No' => '1',
+                'Kode Sampel' => '26.117.201.12.01.0343',
+                'Nama Produk / Sampel' => 'Healthy Bright Daily Sun Refreshing (lotion)',
+                'NIE' => 'NA49231700005',
+                'Merk' => 'VASELINE',
+                'Jenis Sampel' => 'Kosmetika - Rutin',
+                'Komoditi' => 'Kosmetika',
+                'Komposisi' => 'Phenylbenzimidazole Sulfonic Acid',
+                'Bentuk Sediaan' => 'Cairan Kental',
+                'Netto' => '170 mL',
+                'Catatan' => 'K2,M2,A1 Cluster B/ Compliance',
+                'Lokasi Sampel' => 'Kimia 2 Sampel, Mikro 2 Sampel dan Arsip 1 Sampel',
+                '_meta' => [
+                    'no_spu' => 'SPU.117.01.26.10.12.0002',
+                    'nama_unit' => 'BALAI BESAR POM DI MATARAM',
+                    'komoditi' => 'Kosmetika',
+                    'anggaran' => 'Rutin',
+                    'tanggal_spu' => '05 Oktober 2026',
+                    'petugas_penerima' => 'Yusnida, Amd',
+                    'nip_petugas_penerima' => '198303262006042001',
+                    'manager_administrasi' => null,
+                    'nip_manager_administrasi' => null,
+                    'kepala_balai' => null,
+                    'nip_kepala_balai' => null,
+                ],
+            ],
+        ]);
+
+        $singleHtml = view('pdf.laporan-pengujian', [
+            'item' => $item,
+            'qrBase64' => base64_encode('<svg></svg>'),
+            'orientation' => 'landscape',
+            'printedAt' => now()->format('d/m/Y H:i'),
+        ])->render();
+
+        // Identitas Sample hanya menampilkan Nama Produk, NIE, dan Jenis Sampel
+        $this->assertStringContainsString('<li><strong>Nama Produk:</strong> Healthy Bright Daily Sun Refreshing (lotion)</li>', $singleHtml);
+        $this->assertStringContainsString('<li><strong>NIE:</strong> NA49231700005</li>', $singleHtml);
+        $this->assertStringContainsString('<li><strong>Jenis Sampel:</strong> Kosmetika - Rutin</li>', $singleHtml);
+        $this->assertStringNotContainsString('<li><strong>Merk:</strong>', $singleHtml);
+        $this->assertStringNotContainsString('<li><strong>Komposisi:</strong>', $singleHtml);
+        $this->assertStringNotContainsString('<li><strong>Evaluasi Penandaan:</strong>', $singleHtml);
+
+        // 4 Penandatangan sesuai dokumen asli tanpa tambahan (Petugas Penerima Sampel) atau (Manager Administrasi)
+        $this->assertStringContainsString('Pemohon / Pengirim Sampel', $singleHtml);
+        $this->assertStringContainsString('Penerima Sampel/TPS', $singleHtml);
+        $this->assertStringContainsString('Diterima Oleh', $singleHtml);
+        $this->assertStringContainsString('MT Pengujian', $singleHtml);
+        $this->assertStringContainsString('Mengetahui', $singleHtml);
+        $this->assertStringContainsString('(Kepala Balai)', $singleHtml);
+        $this->assertStringContainsString('Yusnida, Amd', $singleHtml);
+        $this->assertStringContainsString('NIP. 198303262006042001', $singleHtml);
+        $this->assertStringNotContainsString('(Petugas Penerima Sampel)', $singleHtml);
+        $this->assertStringNotContainsString('(Manager Administrasi)', $singleHtml);
     }
 }
