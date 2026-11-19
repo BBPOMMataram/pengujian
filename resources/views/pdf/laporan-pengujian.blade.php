@@ -535,6 +535,7 @@
             <td class="lampiran-lbl">Nama Sampel</td>
             <td class="lampiran-val" colspan="3" style="font-weight: 600;">{{ $namaProduk }}</td>
         </tr>
+
         <tr>
             <td class="lampiran-lbl">Bentuk Sediaan</td>
             <td class="lampiran-val">{{ $bentukSediaan }}</td>
