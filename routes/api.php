@@ -22,6 +22,11 @@ Route::prefix('pengujian')->middleware('sso.auth')->group(function () {
 
     // Pengendalian Mutu Mikrobiologi
     Route::get('/pengendalian-mutu/penyelia', [ApiPengendalianMutuController::class, 'getPenyeliaList'])->name('api.pengendalian-mutu.penyelia');
+    Route::get('/pengendalian-mutu/master-penyelia', [ApiPengendalianMutuController::class, 'getAllMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.index');
+    Route::post('/pengendalian-mutu/master-penyelia', [ApiPengendalianMutuController::class, 'storeMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.store');
+    Route::put('/pengendalian-mutu/master-penyelia/{id}', [ApiPengendalianMutuController::class, 'updateMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.update');
+    Route::delete('/pengendalian-mutu/master-penyelia/{id}', [ApiPengendalianMutuController::class, 'destroyMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.destroy');
+
     Route::get('/pengendalian-mutu', [ApiPengendalianMutuController::class, 'index'])->name('api.pengendalian-mutu.index');
     Route::post('/pengendalian-mutu', [ApiPengendalianMutuController::class, 'store'])->name('api.pengendalian-mutu.store');
     Route::get('/pengendalian-mutu/{id}', [ApiPengendalianMutuController::class, 'show'])->name('api.pengendalian-mutu.show');

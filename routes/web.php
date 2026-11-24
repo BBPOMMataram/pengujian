@@ -48,12 +48,21 @@ Route::get('/debug-log', function () {
 
 Route::get('/debug-db', function () {
     try {
-        $tables = \Illuminate\Support\Facades\DB::select("SELECT name FROM sqlite_master WHERE type='table'");
+        $connection = config('database.default');
+        if ($connection === 'sqlite') {
+            $tables = \Illuminate\Support\Facades\DB::select("SELECT name FROM sqlite_master WHERE type='table'");
+            $tableNames = array_column($tables, 'name');
+        } else {
+            $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+            $tableNames = array_map('current', json_decode(json_encode($tables), true));
+        }
+
         return response()->json([
             'status' => 'DB connected',
-            'tables' => array_column($tables, 'name'),
+            'connection' => $connection,
+            'database' => \Illuminate\Support\Facades\DB::connection()->getDatabaseName(),
+            'tables' => $tableNames,
             'app_key' => config('app.key') ? 'set' : 'not set',
-            'database_path' => config('database.connections.sqlite.database'),
             'storage_writable' => is_writable(storage_path()),
             'views_writable' => is_writable(storage_path('framework/views')),
         ]);
@@ -61,6 +70,25 @@ Route::get('/debug-db', function () {
         return response()->json([
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
+});
+
+Route::get('/run-migrate', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        return response()->json([
+            'status' => 'success',
+            'connection' => config('database.default'),
+            'database' => \Illuminate\Support\Facades\DB::connection()->getDatabaseName(),
+            'migrate' => $migrateOutput,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'error' => $e->getMessage(),
         ], 500);
     }
 });

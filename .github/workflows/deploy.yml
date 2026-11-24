@@ -75,7 +75,10 @@ jobs:
               cp -r "$APP_DIR/bootstrap" "$ALT_DIR/"
               cp -r "$APP_DIR/public" "$ALT_DIR/"
               cp -r "$APP_DIR/database/migrations" "$ALT_DIR/database/" 2>/dev/null || true
+              cp -r "$APP_DIR/database/seeders" "$ALT_DIR/database/" 2>/dev/null || true
               if [ -f "$ALT_DIR/artisan" ]; then
+                echo "[Deploy] Running migrations in $ALT_DIR..."
+                (cd "$ALT_DIR" && php artisan migrate --force)
                 (cd "$ALT_DIR" && php artisan optimize:clear)
               fi
               chown -R bbpom9725:bbpom9725 "$ALT_DIR/storage" "$ALT_DIR/bootstrap/cache" "$ALT_DIR/database" 2>/dev/null || true

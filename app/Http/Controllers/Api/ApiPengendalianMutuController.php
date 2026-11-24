@@ -226,4 +226,134 @@ class ApiPengendalianMutuController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get all master penyelia for admin management.
+     */
+    public function getAllMasterPenyelia(Request $request)
+    {
+        try {
+            $query = MasterPenyelia::query();
+
+            if ($search = $request->query('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama', 'like', "%{$search}%")
+                      ->orWhere('nip', 'like', "%{$search}%")
+                      ->orWhere('jabatan', 'like', "%{$search}%");
+                });
+            }
+
+            $penyelias = $query->orderBy('nama', 'asc')->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $penyelias,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching master penyelia: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data master penyelia.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Store new master penyelia.
+     */
+    public function storeMasterPenyelia(Request $request)
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'nip' => 'nullable|string|max:50',
+            'jabatan' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        try {
+            $penyelia = MasterPenyelia::create([
+                'nama' => trim($validated['nama']),
+                'nip' => isset($validated['nip']) ? trim($validated['nip']) : null,
+                'jabatan' => isset($validated['jabatan']) && trim($validated['jabatan']) !== '' 
+                    ? trim($validated['jabatan']) 
+                    : 'Penyelia Mikrobiologi',
+                'is_active' => $request->has('is_active') ? (bool) $request->input('is_active') : true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data penyelia berhasil ditambahkan.',
+                'data' => $penyelia,
+            ], 201);
+        } catch (\Throwable $e) {
+            Log::error('Error creating master penyelia: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan data penyelia.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update existing master penyelia.
+     */
+    public function updateMasterPenyelia(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'nip' => 'nullable|string|max:50',
+            'jabatan' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        try {
+            $penyelia = MasterPenyelia::findOrFail($id);
+            $penyelia->update([
+                'nama' => trim($validated['nama']),
+                'nip' => isset($validated['nip']) ? trim($validated['nip']) : null,
+                'jabatan' => isset($validated['jabatan']) && trim($validated['jabatan']) !== ''
+                    ? trim($validated['jabatan'])
+                    : $penyelia->jabatan,
+                'is_active' => $request->has('is_active') ? (bool) $request->input('is_active') : $penyelia->is_active,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data penyelia berhasil diperbarui.',
+                'data' => $penyelia,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error updating master penyelia: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui data penyelia.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a master penyelia.
+     */
+    public function destroyMasterPenyelia($id)
+    {
+        try {
+            $penyelia = MasterPenyelia::findOrFail($id);
+            $penyelia->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data penyelia berhasil dihapus.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error deleting master penyelia: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus data penyelia.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
