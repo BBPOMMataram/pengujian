@@ -13,6 +13,7 @@ class MasterPenyelia extends Model
     protected $table = 'master_penyelias';
 
     protected $fillable = [
+        'auth_user_id',
         'nama',
         'nip',
         'jabatan',
@@ -20,6 +21,7 @@ class MasterPenyelia extends Model
     ];
 
     protected $casts = [
+        'auth_user_id' => 'string',
         'is_active' => 'boolean',
     ];
 

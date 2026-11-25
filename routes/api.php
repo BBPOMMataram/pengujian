@@ -22,13 +22,22 @@ Route::prefix('pengujian')->middleware('sso.auth')->group(function () {
 
     // Pengendalian Mutu Mikrobiologi
     Route::get('/pengendalian-mutu/penyelia', [ApiPengendalianMutuController::class, 'getPenyeliaList'])->name('api.pengendalian-mutu.penyelia');
+    Route::get('/pengendalian-mutu/katim', [ApiPengendalianMutuController::class, 'getActiveKatim'])->name('api.pengendalian-mutu.katim');
+
     Route::get('/pengendalian-mutu/master-penyelia', [ApiPengendalianMutuController::class, 'getAllMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.index');
     Route::post('/pengendalian-mutu/master-penyelia', [ApiPengendalianMutuController::class, 'storeMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.store');
     Route::put('/pengendalian-mutu/master-penyelia/{id}', [ApiPengendalianMutuController::class, 'updateMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.update');
     Route::delete('/pengendalian-mutu/master-penyelia/{id}', [ApiPengendalianMutuController::class, 'destroyMasterPenyelia'])->name('api.pengendalian-mutu.master-penyelia.destroy');
 
+    Route::get('/pengendalian-mutu/master-katim', [ApiPengendalianMutuController::class, 'getAllMasterKatim'])->name('api.pengendalian-mutu.master-katim.index');
+    Route::post('/pengendalian-mutu/master-katim', [ApiPengendalianMutuController::class, 'storeMasterKatim'])->name('api.pengendalian-mutu.master-katim.store');
+    Route::put('/pengendalian-mutu/master-katim/{id}', [ApiPengendalianMutuController::class, 'updateMasterKatim'])->name('api.pengendalian-mutu.master-katim.update');
+    Route::delete('/pengendalian-mutu/master-katim/{id}', [ApiPengendalianMutuController::class, 'destroyMasterKatim'])->name('api.pengendalian-mutu.master-katim.destroy');
+
     Route::get('/pengendalian-mutu', [ApiPengendalianMutuController::class, 'index'])->name('api.pengendalian-mutu.index');
     Route::post('/pengendalian-mutu', [ApiPengendalianMutuController::class, 'store'])->name('api.pengendalian-mutu.store');
     Route::get('/pengendalian-mutu/{id}', [ApiPengendalianMutuController::class, 'show'])->name('api.pengendalian-mutu.show');
+    Route::post('/pengendalian-mutu/{id}/verify-penyelia', [ApiPengendalianMutuController::class, 'verifyPenyelia'])->name('api.pengendalian-mutu.verify-penyelia');
+    Route::post('/pengendalian-mutu/{id}/verify-katim', [ApiPengendalianMutuController::class, 'verifyKatim'])->name('api.pengendalian-mutu.verify-katim');
     Route::delete('/pengendalian-mutu/{id}', [ApiPengendalianMutuController::class, 'destroy'])->name('api.pengendalian-mutu.destroy');
 });
