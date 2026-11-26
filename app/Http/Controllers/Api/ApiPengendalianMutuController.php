@@ -62,6 +62,43 @@ class ApiPengendalianMutuController extends Controller
         return false;
     }
 
+    private function resolveTargetAuthUserId(?string $authUserId, ?string $nip, ?string $nama): ?string
+    {
+        if (!empty($authUserId)) {
+            return trim($authUserId);
+        }
+
+        try {
+            if (!empty($nip) && $nip !== '-') {
+                $cleanNip = preg_replace('/\s+/', '', trim($nip));
+                $rows = DB::select(
+                    "SELECT u.id FROM bbpo_auth.users u
+                     JOIN bbpo_auth.employees e ON u.id = e.user_id
+                     WHERE REPLACE(e.nip, ' ', '') = ?
+                     LIMIT 1",
+                    [$cleanNip]
+                );
+                if (!empty($rows)) {
+                    return (string) $rows[0]->id;
+                }
+            }
+
+            if (!empty($nama)) {
+                $rows = DB::select(
+                    "SELECT id FROM bbpo_auth.users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1",
+                    [$nama]
+                );
+                if (!empty($rows)) {
+                    return (string) $rows[0]->id;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Abaikan jika koneksi lintas DB tidak tersedia
+        }
+
+        return null;
+    }
+
     private function formatRecord(PengendalianMutu $item, ?MasterKatim $activeKatim = null): array
     {
         $checklistMap = [];
@@ -261,6 +298,27 @@ class ApiPengendalianMutuController extends Controller
 
             $record->load(['checklists', 'penyelia', 'katim']);
 
+            // Kirim notifikasi ke Penyelia yang ditugaskan
+            $penyeliaTargetId = $this->resolveTargetAuthUserId(
+                $record->penyelia?->auth_user_id,
+                $record->penyelia?->nip,
+                $record->penyelia_nama
+            );
+            if ($penyeliaTargetId) {
+                $tglFormatted = $record->tanggal_pengujian instanceof \DateTimeInterface
+                    ? $record->tanggal_pengujian->format('d/m/Y')
+                    : (string) $record->tanggal_pengujian;
+                $this->sendCentralNotification([
+                    'module' => 'pengujian',
+                    'title' => 'Menunggu Verifikasi Penyelia',
+                    'message' => "{$pengujiNama} telah mengisi checklist Pengendalian Mutu ({$record->parameter_pengujian} - {$tglFormatted}). Silakan lakukan verifikasi.",
+                    'action_url' => '/pengujian/pengendalian-mutu',
+                    'icon' => 'solar:clipboard-check-bold',
+                    'type' => 'info',
+                    'target_user_id' => $penyeliaTargetId,
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Data pengendalian mutu berhasil disimpan.',
@@ -322,7 +380,29 @@ class ApiPengendalianMutuController extends Controller
                 'penyelia_signature_path' => $signaturePath,
             ]);
 
-            $activeKatim = MasterKatim::where('is_active', true)->orderByDesc('id')->first();$item->refresh()->load(['checklists', 'penyelia', 'katim']);
+            $activeKatim = MasterKatim::where('is_active', true)->orderByDesc('id')->first();
+            $item->refresh()->load(['checklists', 'penyelia', 'katim']);
+
+            // Kirim notifikasi ke Ketua Tim aktif yang ditugaskan untuk verifikasi berikutnya
+            $targetKatim = $activeKatim ?? $item->katim;
+            if ($targetKatim) {
+                $katimTargetId = $this->resolveTargetAuthUserId(
+                    $targetKatim->auth_user_id,
+                    $targetKatim->nip,
+                    $targetKatim->nama
+                );
+                if ($katimTargetId) {
+                    $this->sendCentralNotification([
+                        'module' => 'pengujian',
+                        'title' => 'Menunggu Verifikasi Ketua Tim',
+                        'message' => "Checklist Pengendalian Mutu ({$item->parameter_pengujian}) telah diverifikasi oleh Penyelia ({$item->penyelia_nama}). Silakan lakukan verifikasi Ketua Tim.",
+                        'action_url' => '/pengujian/pengendalian-mutu',
+                        'icon' => 'solar:shield-check-bold',
+                        'type' => 'info',
+                        'target_user_id' => $katimTargetId,
+                    ]);
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -392,6 +472,19 @@ class ApiPengendalianMutuController extends Controller
             ]);
 
             $item->refresh()->load(['checklists', 'penyelia', 'katim']);
+
+            // Kirim notifikasi ke Penguji bahwa checklist telah disetujui penuh
+            if (!empty($item->user_id)) {
+                $this->sendCentralNotification([
+                    'module' => 'pengujian',
+                    'title' => 'Checklist Pengendalian Mutu Disetujui',
+                    'message' => "Checklist Pengendalian Mutu ({$item->parameter_pengujian}) Anda telah diverifikasi oleh Penyelia dan Ketua Tim ({$item->katim_nama}).",
+                    'action_url' => '/pengujian/pengendalian-mutu',
+                    'icon' => 'solar:verified-check-bold',
+                    'type' => 'success',
+                    'target_user_id' => (string) $item->user_id,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
